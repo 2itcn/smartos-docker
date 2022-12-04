@@ -1,0 +1,990 @@
+#!/bin/bash
+set -o errexit
+set -o pipefail
+
+support_cmds="run|pull|ps|logs|images|start|stop|restart|rm|help"
+
+function usage_logs(){
+    echo ""
+    echo "  $(basename $0) logs [-f] <container>" 
+    echo "    显示容器日志信息" 
+    echo "    参数:" 
+    echo "      container 容器名称或uuid"
+    echo "    options:"
+    echo "      -f 跟踪日志输出"
+}
+
+function usage_pull(){
+    echo ""
+    echo "  $(basename $0) pull [-q] <docker_image>"
+    echo "    拉取docker镜像" 
+    echo "    参数:" 
+    echo "      docker_image docker镜像, NAME[:TAG], 如未提供TAG, 默认为 latest"
+    echo "    options:"
+    echo "      -q 不显示进度信息"
+}
+
+function usage_images(){
+    echo ""
+    echo "  $(basename $0) images" 
+    echo "    显示已下载的镜像列表" 
+}
+
+function usage_ps(){
+    echo ""
+    echo "  $(basename $0) ps" 
+    echo "    显示部署的容器列表" 
+}
+
+function usage_help(){
+    echo ""
+    echo "  $(basename $0) help <sub_command>" 
+    echo "    显示子命令帮助" 
+    echo "    参数:" 
+    echo "      sub_command 子命令"
+}
+
+
+function usage_run(){
+    echo ""
+    echo "  $(basename $0)[run] [-v|-k] -f <filename> [options] [<docker_image>]" 
+    echo "  $(basename $0) [run] [options] [<docker_image>]" 
+    echo "    创建并运行容器/创建容器payload" 
+    echo "    参数:" 
+    echo "      docker_image docker镜像, NAME[:TAG], 如未提供TAG, 默认为 latest, 此参数与--image_uuid冲突, 不能同时提供"
+    echo "    options:"
+    echo "     -f <filename> payload file, 如果不提供, 必须提供image_uuid, 并且只会生成完成payload文件显示, 不会执行创建docker容器"
+    echo "     --uuid 容器uuid, 默认随机产生"
+    echo "     -v 显示完整payload, vmadm可用" 
+    echo "     -k 跳过所有选项分析和替换, 直接使用原始文件创建docker zone, 必须和-f一起使用"   
+    echo "     --image_uuid docker_image uuid, 如果提供, 以这个为准（会替换payload文件中的image_uuid), 与参数 docker_image 冲突"    
+    echo "     --hostname 主机名称, 如果不设置默认为容器uuid"
+    echo "     --name 容器名称, 如果不设置默认为无(-)"
+    echo "     --kernel_version linux kernel version, 默认为:4.3.0(ubuntu-20.04)"
+    echo "     --memory 容器内存, 单位为MB, 默认为512"
+    echo "     --cpu_cap 容器cpu使用限额, 单位为百分比, 如100表示一个全cpu, 默认为0, 表示不限制"
+    echo "     --cpu_shares 容器cpu使用优先级, 相对于整台服务器所有zone有效, 默认为100, 如100比50有两倍的机会享有cpu" 
+    echo "     --quota 容器磁盘限额, 单位为GB, 默认为10"
+    echo "     --nic_network nic network名称, 需要配置/opt/tools/etc/smartos-docker.conf"
+    echo "     --nic_ip docker nic ip, 如果没有配置filename, 则应指定ip, 否则没有可访问的IP, 默认为dhcp(获取不到IP)"
+    echo "          格式为: xxx.xxx.xxx.xxx/xx 或 xxx.xxx.xxx.xxx, 如不提供/xx, 则默认为/24, 如: 192.168.1.8 和 192.168.1.8/24是相同的"
+    echo "     --nic_gateway docker nic gateway, 如果没有配置filename, 则应指定gateway, 默认无或从nic_network中读取"
+    echo "          格式为: xxx.xxx.xxx.xxx, 如: 192.168.1.1"
+    echo "     --nic_vlan_id docker nic vlanid, 如果没有配置filename, 则按实际输入,默认为0(无vlan)或从nic_network中读取"
+    echo "          格式为数字: 18"
+    echo "     --nic_tag docker nic tag, 如果没有配置filename, 则按实际输入,默认为admin或从nic_network中读取"
+    echo "     --resolver docker 域名解析服务器, 如果没有配置filename, 则按实际输入, 可以多次设置或一次设置多个"
+    echo "          多次设置:--resolver 8.8.8.8 --resolver 4.4.4.4"
+    echo "          设置多个: --resolver \"8.8.8.8 4.4.4.4\""
+    echo "          默认为: --resolver \"8.8.8.8 4.4.4.4\"或从nic_network中读取"
+
+    echo "     --workdir 工作目录, 一般不需要设置"
+    echo "     --env 环境变量, 可以多次设置或一次设置多个, 会覆盖默认环境变量"
+    echo "          多次设置:--env varname1=varvalue1 --env varname2=varvalue2"
+    echo "          设置多个: --env \"varname1=varvalue1 varname2=varvalue2\""
+    echo "     --cmd docker Cmd, 可以多次设置或一次设置多个, 如果多次设置请注意顺序"
+    echo "          多次设置:--cmd bash --cmd scriptfile"
+    echo "          设置多个: --cmd \"bash scriptfile\""
+    echo "     --entrypoint docker Entrypoint, 可以多次设置或一次设置多个, 如果多次设置请注意顺序"
+    echo "          多次设置:--entrypoint bash --entrypoint scriptfile"
+    echo "          设置多个: --entrypoint \"bash scriptfile\""    
+    echo "     --lofs_volume docker lofs volume,  可以多次设置或一次设置多个"
+    echo "          单个volume格式为(不允许存在空格): [<source>]:<target>[:<options>]"
+    echo "              source: 为SmartOS主机上存在的目录或文件"
+    echo "                  新版本SmartOS(>=20210506T001621Z)可以省略, 如果省略则会在容器下创建目录(zfs filesystem):/zones/<vm_uuid>/volumes/<volume_uuid>"
+    echo "                  支持自动创建volume source:"
+    echo "                      - 为每一个volume创建zfs文件系统, source必须是可以创建zfs文件系统的路径"
+    echo "                      - 如果配置了volume_base_store, 则sources可以省略默认前面路径: ${volume_base_store}/${vm_name}/volumes"
+    echo "                          - data => ${volume_base_store}/${vm_name}/volumes/data"
+    echo "                      - 支持文件volume, 文件volume应该加上文件标志, 以方便自动创建"
+    echo "                      - 如果文件volume source不存在, 则会先创建一个临时docker容器, 将容器要挂载的文件复制到source"
+    echo "                      - 通过标志注明文件volume和volume权限, 工具会自动chown"
+    echo "                          - 标志附在target上, 以*隔开"
+    echo "                          - 文件标志必须在权限标志前"
+    echo "                          - 文件标志: *f"
+    echo "                          - 权限标志: *1000, */1000, *1000/1000, 其中:以/代替, 实际执行为 chown -R 1000, chown -R :1000, chown -R 1000:1000"
+    echo "                          - 示例: "
+    echo "                              --lofs_volume /zones/volumes/data1:/data1*1000"
+    echo "                              --lofs_volume /zones/volumes/file1:/file1*f*1000:1000"
+    echo "              target: 挂载到容器中对应的目录"
+    echo "              options: 挂载选项, 可以省略, 支持多选, 以,隔开"    
+    echo "          多次设置:"
+    echo "              --lofs_volume /zones/volumes/data1:/data1:ro --lofs_volume :/data1"
+    echo "          设置多个: "
+    echo "              --lofs_volume \"/zones/volumes/data1:/data1:ro :/data1\""   
+    echo ""
+    echo "  基础payload file最少项:"
+    echo "      image_uuid: 类型为docker image uuid, 必须已经导入"
+    echo "        imgadm import <img_name>[:img_tag]"
+    echo "        imgadm list --docker"
+    echo "      nic: 必须设置一个主nic并设置为静态IP, 否则无法访问到容器"  
+}
+
+function usage_start(){
+    echo ""
+    echo "  $(basename $0) start <container>" 
+    echo "    启动容器, 容器从 stopped 状态 启动为 running 状态"  
+    echo "    参数:" 
+    echo "      container 容器名称或uuid"   
+}
+
+function usage_stop(){
+    echo ""
+    echo "  $(basename $0) stop [-f|-t <timeout>] <container>" 
+    echo "    停止容器, 容器从 running 状态 停止为 stopped 状态" 
+    echo "    此操作为友好停止容器, 调用容器内/sbin/shutdown -h now, 默认超时时间为60s, 超过此时间后,会强制halt容器" 
+    echo "    参数:" 
+    echo "      container 容器名称或uuid"
+    echo "    options:"
+    echo "      -f 强制停止, 非友好停止, 一般在无法正常停止时使用"
+    echo "      -t <timeout> 超时时间, 数字, 单位为s, 默认为60s"
+}
+
+function usage_restart(){
+    echo ""
+    echo "  $(basename $0) restart [-f] <container>" 
+    echo "    重启容器" 
+    echo "    此操作先友好停止容器, 再启动容器" 
+    echo "    参数:" 
+    echo "      container 容器名称或uuid"
+    echo "    options:"
+    echo "      -f 强制重启"
+}
+
+function usage_rm(){
+    echo ""
+    echo "  $(basename $0) rm [-f] <container>" 
+    echo "    删除容器" 
+    echo "    如果容器处于 runngin 状态, 则提示并退出，不做删除操作" 
+    echo "    参数:" 
+    echo "      container 容器名称或uuid"
+    echo "    options:"
+    echo "      -f 强制删除, 即使用容器"
+}
+
+function usage(){
+    echo "usage:"    
+    echo "  $(basename $0) [run] [-v|-k] -f <filename> [options] [<docker_image>]"    
+    echo "  $(basename $0) [run] [options] [<docker_image>]"  
+    echo "  $(basename $0) logs [-f] <container>" 
+    echo "  $(basename $0) pull [-q] <docker_image>" 
+    echo "  $(basename $0) ps" 
+    echo "  $(basename $0) images" 
+    echo "  $(basename $0) start <container>" 
+    echo "  $(basename $0) stop [-f|-t <timeout>] <container>" 
+    echo "  $(basename $0) restart [-f] <container>" 
+    echo "  $(basename $0) rm [-f] <container>"     
+    echo "  $(basename $0) help <sub_command>"  
+    echo "  $(basename $0) -h" 
+    echo ""
+    echo "  -h 显示使用帮助, 可选"
+
+    usage_run
+    usage_logs
+    usage_pull
+    usage_ps
+    usage_images
+    usage_start
+    usage_stop
+    usage_restart
+    usage_rm
+    usage_help    
+    exit
+}
+
+
+function fatal(){
+  echo "$1"
+  exit 1
+}
+
+# 根据路径获取要创建的 fs名称
+# 如果路径为 create-volume 或已存在, 输出 E
+# 如果路径找不到对应的父级 fs, 则返回""
+# 如果路径找得到父级 fs, 则返回对应的要创建的 fs 名称
+function get_new_zfs_name(){
+    local host_path=$1
+    host_path=${host_path%/}
+    
+    if [ "${host_path}" == "create-volume" -o -e ${host_path} ]; then
+        echo "E"
+        return
+    fi
+    
+    
+    local new_path=""
+    local zfs_name=""
+    while [ "${host_path}" != "" ]; do
+        zfs_name=$(zfs list -H -o name ${host_path} 2>/dev/null) || true
+        if [ "${zfs_name}" != "" ]; then
+            break
+        fi
+        local last_seg=${host_path##*/}
+        new_path="/${last_seg}${new_path}"
+        host_path=${host_path%/*}
+    done
+
+    [[ "${zfs_name}" == "" ]] || zfs_name="${zfs_name}${new_path}"
+    echo "${zfs_name}"    
+}
+
+function get_vol_string(){
+    local lofs_basename=$1
+    local vol=$2
+    local vol_seg=()
+    local vol_string="{"
+
+    if [ "$(echo ${vol}|grep :)" != "" ]; then
+        for ((i=1;i<=3;i++)) do
+            vol_seg[i-1]=$(echo ${vol} | cut -d ":" -f $i)        
+        done
+    fi
+     
+    local src=${vol_seg[0]}
+    # new pi support
+    [[ "${src}" == "" ]] && src="create-volume"
+    if [ "${src:0:1}" != "/" ]; then     
+        local smartos_docker_conf_file=smartos-docker.conf
+        local lofs_store_base=""
+        [[ -f ${smartos_docker_conf_file} ]] || smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
+        [[ -f ${smartos_docker_conf_file} ]] && lofs_store_base=$(json -f ${smartos_docker_conf_file} volume_base_store)
+        
+        if [ "${src}" == "create-volume" ]; then
+            [[ "${lofs_store_base}" == "" ]] || src="${lofs_store_base}/${lofs_basename}/volumes/$(uuid)"
+        else
+            [[ "${lofs_store_base}" == "" ]] && fatal "没有配置 volume_base_store, volume source: ${src} 不合法"
+            src="${lofs_store_base}/${lofs_basename}/volumes/${src}"
+        fi
+    fi
+
+    local tgt=${vol_seg[1]}
+    [[ "${tgt}" == "" ]] && fatal "${vol} 设置不对, lofs_volume的正确格式为: '[<source>]:<target>[:<options>]\\n如: /zones/volumes/data:/data\\n/zones/volumes/data:/data:ro\\n:/data\\n"
+    
+    
+    if [ "$(echo ${tgt}|grep \*)" != "" ]; then
+        local temp_val=${tgt}
+        tgt=$(echo ${temp_val} | cut -d "*" -f 1)   
+        local temp_flag=$(echo ${temp_val} | cut -d "*" -f 2)  
+        local temp_result='{}'
+        if [ "${temp_flag}" == "f" ];then
+            temp_result=$(echo ${temp_result} | json -e "this.isfile=true")
+            temp_flag=$(echo ${temp_val} | cut -d "*" -f 3)        
+        fi        
+        [[ "${temp_flag}" == "" ]] || temp_result=$(echo ${temp_result} | json -e "this.owner='${temp_flag/\//:}'")
+        
+        if [ "${temp_result}" != "{}" ]; then
+            temp_result=$(echo ${temp_result} | json -e "this.source='${src}';this.target='${tgt}'")
+            if [ "${lofs_attr}" == "" ];then
+                lofs_attr=${temp_result}
+            else
+                lofs_attr="${lofs_attr}, ${temp_result}"
+            fi
+        fi
+    fi
+        
+
+    $(echo ${vol} | cut -d ":" -f $i)
+  
+    local options=${vol_seg[2]}
+       
+    vol_string="${vol_string}\"source\":\"${src}\""    
+    vol_string="${vol_string},\"type\":\"lofs\""
+    vol_string="${vol_string},\"target\":\"${tgt}\""
+    if [ "${options}" != "" ]; then
+        vol_string="${vol_string},\"options\":[\"${options//,/\",\"}\"]"  
+    fi
+    g_vol_string="${vol_string}}"
+}
+
+function gen_dhcp_ip(){
+    local network_name=$1
+    local temp_image_uuid=800db35c-5408-11eb-9792-872f658e7911
+
+    local smartos_docker_conf_file=smartos-docker.conf
+    [[ -f ${smartos_docker_conf_file} ]] || smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
+    [[ -f ${smartos_docker_conf_file} ]] || fatal "不存在 smartos-docker.conf 或 /opt/tools/etc/smartos-docker.conf"
+    local network_conf=$(json -f ${smartos_docker_conf_file} networks | json -c "this.name=='${network_name}'" 0)
+    [[ "${network_conf}" == "" ]] && fatal "network_conf 配置中不存在名为　${network_name} 的网络"
+    local temp_nic_tag=$(echo ${network_conf} | json tag)
+    local temp_nic_gateway=$(echo ${network_conf} | json gw)
+    local temp_nic_vlan_id=$(echo ${network_conf} | json vlan_id)    
+    local nic_json_content="\"ips\":[\"dhcp\"],\"gateway\":\"${temp_nic_gateway}\",\"nic_tag\":\"${temp_nic_tag}\""
+    [[ "${temp_nic_vlan_id}" == "" ]] || nic_json_content="${nic_json_content},\"vlan_id\": ${temp_nic_vlan_id}"
+
+    local temp_vm_uuid=$(uuid)
+    local vm_json="{\"uuid\":\"${temp_vm_uuid}\",\"image_uuid\":\"${temp_image_uuid}\",\"brand\":\"joyent-minimal\",\"nics\":[{${nic_json_content}}],\"alias\":\"get-dhcp-ip\"}"
+    
+    [[ "$(imgadm list -H -o name uuid=${temp_image_uuid})" == "" ]] && imgadm import -q ${temp_image_uuid}
+    
+    #echo "create temp vm for get dhcp ip"
+    echo ${vm_json}|vmadm create 2>/dev/null
+    local dhcp_ip=$(zlogin ${temp_vm_uuid} 'ipadm show-addr -p -o addr net0/')
+    vmadm delete ${temp_vm_uuid} 2>/dev/null
+
+    echo "$dhcp_ip"
+}
+
+json_context=""
+
+function is_uuid(){
+    local val=$1
+    if [ ${#val} != 36 ]; then
+        echo 0
+        return
+    fi
+    local chars="[a-fA-F0-9]"
+    local pattern="${chars}\{8\}\(-${chars}\{4\}\)\{3\}-${chars}\{12\}"
+    local result=$(echo ${val} | grep ${pattern})
+    if [ "${result}" == "${val}" ]; then
+        echo 1
+    else
+        echo 0
+    fi
+}
+
+function apply_network(){
+    local network_name=$1
+    local smartos_docker_conf_file=smartos-docker.conf
+    [[ -f ${smartos_docker_conf_file} ]] || smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
+    [[ -f ${smartos_docker_conf_file} ]] || fatal "不存在 smartos-docker.conf 或 /opt/tools/etc/smartos-docker.conf"
+    local network_conf=$(json -f ${smartos_docker_conf_file} networks | json -c "this.name=='${network_name}'" 0)
+    [[ "${network_conf}" == "" ]] && fatal "network_conf 配置中不存在名为　${network_name} 的网络"
+    [[ "${nic_tag}" == "" ]] && nic_tag=$(echo ${network_conf} | json tag)
+    [[ "${nic_gateway}" == "" ]] && nic_gateway=$(echo ${network_conf} | json gw)
+    [[ "${nic_vlan_id}" == "" ]] && nic_vlan_id=$(echo ${network_conf} | json vlan_id)
+    [[ "${nic_netmask}" == "" ]] && nic_netmask=$(echo ${network_conf} | json netmask)
+    nic_netmask=$(echo ${network_conf} | json netmask)
+    [[ "${#resolvers[*]}" == "0" ]] && resolvers=($(echo $network_conf|json -e 'resolvers_string=this.resolvers.join(" ")' resolvers_string))
+}
+
+
+function get_docker_image_uuid(){
+    local docker_image=$1
+    local image_repo=${docker_image%:*}
+    local image_tag=${docker_image##*:}
+    [[ "${image_tag}" == "${docker_image}" ]] && image_tag="latest"
+    image_uuid=$(imgadm list -j --docker  docker_repo=${image_repo} docker_tags=${image_tag} |json 0.manifest.uuid)
+    echo "${image_uuid}"
+}
+
+function prepare_metadata(){
+    json_string=$1
+    # VM
+    local val=$(echo ${json_string} | json uuid)
+
+    if [ "${val}" == "" ]; then
+        json_string=$(echo ${json_string} | json -e "this.uuid='${vm_uuid}'")
+    else
+        vm_uuid=${val}
+    fi
+    [[ "${hostname}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.hostname='${hostname}'")
+    [[ "${name}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.alias='${name}'")
+    [[ "${memory}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.max_physical_memory=${memory}")
+    [[ "${cpu_cap}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.cpu_cap=${cpu_cap}")
+    [[ "${cpu_shares}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.cpu_shares=${cpu_shares}")
+    [[ "${quota}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.quota=${quota}")
+
+    [[ "${nic_ip}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.nics[0].ips=['${nic_ip}']")
+    [[ "${nic_tag}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.nics[0].nic_tag='${nic_tag}'")
+    [[ "${nic_gateway}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.nics[0].gateway='${nic_gateway}'")
+    [[ "${nic_vlan_id}" == "" ]] || json_string=$(echo ${json_string} | json -e "this.nics[0].vlan_id=${nic_vlan_id}")
+    
+    if [ "${#resolvers[*]}" != "0" ]; then
+        val=${resolvers[@]}
+        json_string=$(echo ${json_string} | json -e "this.resolvers=['${val// /\',\'}']")
+    fi
+    if [ "${#lofs_volumes[*]}" != "0" ]; then
+        local lofs_basename=$(echo ${json_string} | json alias)
+        [[ "${lofs_basename}" == "" ]] && lofs_basename=${vm_uuid}
+        vol_prefix=','
+        file_systems=$(echo ${json_string} | json filesystems)
+        if [ "${file_systems}" == "" ]; then
+            file_systems='[]'
+            vol_prefix=''
+        fi
+        for vol in ${lofs_volumes[@]}
+        do                      
+            g_vol_string=""
+            get_vol_string ${lofs_basename} ${vol}        
+            file_systems="${file_systems%%]}${vol_prefix}${g_vol_string}]"
+            vol_prefix=','            
+        done
+        
+        json_string=$(echo ${json_string} | json -e "this.filesystems=${file_systems}")
+    fi
+
+    json_string=$(echo ${json_string} | json -e "this.docker=true; this.brand='lx'; this.kernel_version='${kernel_version}'")
+
+    # DOCKER
+    [[ "${image_uuid}" == "" ]] && image_uuid=$(echo ${json_string} | json image_uuid)
+    [[ "$(imgadm list -H --docker uuid=${image_uuid})" == "" ]] && fatal "docker image_uuid ${image_uuid} 不存在"
+
+    if [ "${#entrypoints[*]}" == "0" ]; then
+        docker_entrypoint=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.Entrypoint -o json-0|sed 's/"/\\"/g')
+    else
+        val=${entrypoints[@]}
+        docker_entrypoint="[\\\"${val// /\\\",\\\"}\\\"]"
+    fi
+    if [ "${#cmds[*]}" == "0" ]; then
+        docker_cmd=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.Cmd -o json-0|sed 's/"/\\"/g')
+    else
+        val=${cmds[@]}
+        docker_cmd="[\\\"${val// /\\\",\\\"}\\\"]"
+    fi   
+
+    # docker_env=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.Env -o json-0|sed 's/"/\\"/g')
+    docker_env=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.Env -o json-0)    
+    
+     [[ "${docker_env}" == "null" ]] && docker_env=""
+    #docker_env=""
+    if [ "${#envs[*]}" != "0" ]; then
+        [[ "${docker_env}" == "" ]] && docker_env="[]"
+        for env in ${envs[@]}
+        do
+            env_key=${env%%=*}
+            env_exists=$(echo ${docker_env}|grep "${env_key}=") || env_exists=""
+            if [ "${env_exists}" == "" ]; then
+                docker_env="${docker_env%%]},\"${env}\"]"
+            else
+                docker_env=$(echo ${docker_env} | sed "s|\"${env_key}=[^\"]*\"|\"${env}\"|")
+            fi
+        done        
+        # docker_env="[\\\"${val// /\\\",\\\"}\\\"]"
+        docker_env=$(echo ${docker_env}|sed 's/"/\\"/g')
+    fi
+
+    #docker_workingdir=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.WorkingDir -o json-0|sed 's/"/\\"/g')
+    docker_workingdir=$(imgadm get ${image_uuid}|json manifest.tags.docker:config.WorkingDir -o json-0|sed 's/"/\\"/g')
+    
+
+    [[ "${docker_workingdir}" == '\"\"' ]] && docker_workingdir=
+    [[ "${workdir}" == "" ]] && workdir=${docker_workingdir}
+
+    internal_metadata=""
+    [[ "${docker_entrypoint}" == "null" ]] && docker_entrypoint=""
+    [[ "${docker_cmd}" == "null" ]] && docker_cmd=""
+
+    prefix='{'
+    if [ "${docker_entrypoint}" != "" ]; then 
+        internal_metadata="${internal_metadata}${prefix}'docker:entrypoint':'${docker_entrypoint}'"
+        prefix=','
+    fi
+    if [ "${docker_cmd}" != "" ]; then 
+        internal_metadata="${internal_metadata}${prefix}'docker:cmd':'${docker_cmd}'"
+        prefix=','
+    fi
+    if [ "${docker_env}" != "" ]; then 
+        internal_metadata="${internal_metadata}${prefix}'docker:env':'${docker_env}'"
+        prefix=','
+    fi
+    if [ "${workdir}" != "" ]; then 
+        internal_metadata="${internal_metadata}${prefix}'docker:workingdir':'${workdir}','docker:workdir':'${workdir}'"
+        prefix=','
+    fi
+    internal_metadata="${internal_metadata}${prefix}'docker:open_stdin': 'true', 'docker:tty': 'true'"    
+
+    if [ "${lofs_attr}" != "" ];then
+        lofs_attr="[${lofs_attr}]"
+        internal_metadata="${internal_metadata},'itime:lofs_attr':\"$(echo ${lofs_attr}|sed 's/"/\\"/g')\""        
+    fi
+
+    internal_metadata="${internal_metadata},'itime:network': \"${nic_network}\"}"
+
+    json_code="this.internal_metadata_namespaces=[\"itime\"]; this.internal_metadata=${internal_metadata}; "
+    
+    json_string=$(echo ${json_string} | json -e "${json_code}")    
+
+    
+    
+
+    json_context=${json_string}
+}
+
+
+function do_pull(){
+    local img=$1
+    if [ "${pull_quiet}" == "true" ];then
+        imgadm import -q ${img}
+    else
+        imgadm import ${img}
+    fi
+}
+
+function do_ps(){
+    vmadm list -o uuid,type,ram,cpu_cap,cpu_shares,quota,state,alias docker=true
+}
+
+function do_images(){    
+    imgadm list --docker
+}
+
+function do_images_all(){    
+    imgadm list -o uuid,docker_repo,docker_tags,version,pub type=docker
+}
+
+function do_logs(){
+    local zone=$1
+    if [ "$(is_uuid ${zone})" == "0" ]; then
+        zone=$(vmadm lookup docker=true alias=${zone})
+    fi
+    [[ "${zone}" == "" ]] && fatal "docker $1 不存在或类型不为docker"
+    if [ "${log_follow}" ==  "true" ]; then
+        tail -f /zones/${zone}/logs/stdio.log | bunyan
+    else
+        cat /zones/${zone}/logs/stdio.log | bunyan
+    fi
+}
+
+function do_start(){
+    local zone=$1
+    if [ "$(is_uuid ${zone})" == "0" ]; then
+        zone=$(vmadm lookup docker=true alias=${zone})
+    fi
+    [[ "${zone}" == "" ]] && fatal "docker $1 不存在或类型不为docker"
+    vmadm start ${zone}
+}
+
+function do_stop(){
+    local zone=$1
+    if [ "$(is_uuid ${zone})" == "0" ]; then
+        zone=$(vmadm lookup docker=true alias=${zone})
+    fi
+    [[ "${zone}" == "" ]] && fatal "docker $1 不存在或类型不为docker"
+    local options=""
+    [[ "${stop_force}" ==  "true" ]] && options=" -F "
+    [[ "${stop_timeout}" ==  "" ]] || options="${options} -t ${stop_timeout}"
+    vmadm stop ${zone} ${options}    
+}
+
+function do_restart(){
+    local zone=$1
+    if [ "$(is_uuid ${zone})" == "0" ]; then
+        zone=$(vmadm lookup docker=true alias=${zone})
+    fi
+    [[ "${zone}" == "" ]] && fatal "docker $1 不存在或类型不为docker"
+    local options=""
+    [[ "${restart_force}" ==  "true" ]] && options=" -F "
+   
+    vmadm reboot ${zone} ${options}    
+}
+
+function do_rm(){
+    local zone=$1
+    if [ "$(is_uuid ${zone})" == "0" ]; then
+        zone=$(vmadm lookup docker=true alias=${zone})
+    fi
+    [[ "${zone}" == "" ]] && fatal "docker $1 不存在或类型不为docker"
+    local state=$(vmadm get ${zone} | json state)
+    if [ "${state}" == "running" -a "${rm_force}" !=  "true"  ]; then
+        fatal "docker $1 处于 ${state} 状态, 请先停止容器或使用 -f 选项"
+    fi
+   
+    vmadm delete ${zone} 
+}
+
+function do_rmi(){
+    local img_uuid=$1   
+    imgadm delete ${img_uuid} 
+}
+
+function do_help(){
+    local cmd=$1
+    case ${cmd} in
+        run|pull|ps|logs|images|start|stop|restart|rm|help )   
+            echo "usage"         
+            usage_${cmd}  
+            exit          
+            ;;
+        * )
+            echo "不支持的命令 ${cmd}"
+            usage
+            ;;
+    esac   
+}
+
+
+function do_run(){
+    if [ "${payload_file}" == "" ]; then
+        [[ ${skip_prepare} == false ]] || fatal "-k 必须和 -f 同时使用"
+
+        run_type=show
+        
+        if [ "${image_uuid}" == "" ]; then
+            fatal "payload 和 --image_uuid/<docker_image>  最少需要提供一个"
+        fi
+        payload_file=docker-payload.json
+        cat > ${payload_file} <<EOF
+{    
+    "uuid": "${vm_uuid}",    
+    "max_physical_memory": 512,
+    "image_uuid": "${image_uuid}",
+    "resolvers": [
+        "8.8.8.8","4.4.4.4"
+    ],  
+    "nics": [
+        {
+            "nic_tag": "admin",
+            "ips": [
+                "dhcp"
+            ],
+            "primary": true
+        }
+    ]
+}
+EOF
+    fi
+
+    new_payload_file=${payload_file}
+    if [ ${skip_prepare} == false ]; then
+        prepare_metadata "$(json -f ${payload_file})"
+        new_payload_file=${vm_uuid}.json
+        echo ${json_context} | json > ${new_payload_file}
+        echo "payload file saved at ${new_payload_file}"
+    fi
+
+    if [ "${run_type}" == "run" ]; then        
+        do_volume ${new_payload_file}
+
+        ip=$(json -f ${new_payload_file} nics.0.ips.0)
+        if [ "${ip}" == "dhcp" ]; then            
+            temp_network=$(json -f ${new_payload_file} internal_metadata.itime:network)
+            [[ "${temp_network}" == "" ]] || nic_network=${temp_network}
+            [[ "${nic_network}" == "" ]] && fatal "dhcp 必须指定 --nic_network"
+            ip=$(gen_dhcp_ip ${nic_network})
+            [[ "${ip}" == "" ]] && fatal "无法获取网络 ${nic_network} ip地址"
+            temp_json_content=$(json -f ${new_payload_file} -e "nics[0].ips[0]='${ip}'")
+            echo "docker 容器 ip 为 ${ip}"  
+            echo ${temp_json_content} | json > ${new_payload_file}
+        fi
+        vmadm create -f ${new_payload_file}
+    elif [ "${run_type}" == "show" ]; then    
+        echo ""
+        json -f ${new_payload_file}
+    fi
+}
+
+function do_volume(){
+    local filename=$1
+    local volume_attrs=$(json -f ${filename} internal_metadata.itime:lofs_attr)
+    [[ "${volume_attrs}" == "" ]] && volume_attrs="[]"
+    local file_not_exists=""
+    local zfs_names=""
+    for src in $(json -f ${filename} filesystems|json -a source)
+    do
+        local isfile=$(echo ${volume_attrs} | json -c "source=='${src}'" 0.isfile)
+        if [ "${isfile}" == "true" ]; then
+            [[ -f ${src} ]] || file_not_exists="${file_not_exists} ${src}"
+            continue
+        fi        
+
+        zfs_name=$(get_new_zfs_name ${src})
+        [[ "${zfs_name}" == "" ]] && fatal "filesystems source ${src} can't be created"
+        [[ "${zfs_name}" == "E" ]] || zfs_names="${zfs_names} ${zfs_name}"
+    done    
+
+    if [ "${zfs_names}" != "" ];then
+        for zfs_name in ${zfs_names}
+        do
+            zfs create -p ${zfs_name}
+        done
+    fi
+
+    if [ "${file_not_exists}" != "" ]; then
+        local temp_vm_uuid=$(uuid)
+        echo "create temp docker for cp default config file..."
+        json -f ${filename} -e "this.filesystems=null;this.uuid='${temp_vm_uuid}'"|sed 's/"filesystems": null,//'| vmadm create 
+        for src in ${file_not_exists}
+        do
+            tgt=$(echo ${volume_attrs} | json -c "source=='${src}'" 0.target)
+            cp /zones/${temp_vm_uuid}/root${tgt} ${src}
+        done
+        echo "remove temp docker..."
+        vmadm delete ${temp_vm_uuid}
+        echo ""
+    fi
+
+    
+    for v_attr in $(echo ${volume_attrs} | json -e "result=this.source + '*' + this.owner" -a result)
+    do        
+        src=$(echo ${v_attr} | cut -d '*' -f 1)
+        owner=$(echo ${v_attr} | cut -d '*' -f 2)
+        [[ "${owner}" == "undefined" ]] && owner=""
+        echo "chown -R ${owner} ${src}"
+        [[ "${owner}" == "" ]] || chown -R ${owner} ${src}
+    done
+}
+
+
+
+vm_uuid=$(uuid)
+kernel_version=4.3.0
+run_type=run
+envs=()
+cmds=()
+entrypoints=()
+hostname=""
+name=""
+memory=""
+cpu_cap=""
+cpu_shares=""
+quota=""
+nic_ip=""
+nic_gateway=""
+nic_vlan_id=""
+nic_tag=""
+nic_netmask=24
+resolvers=()
+lofs_volumes=()
+skip_prepare=false
+
+NETWORK_DEFAULT="default"
+nic_network=""
+lofs_attr=""
+
+CMD="run"
+
+case $1 in
+    run|pull|ps|logs|images|start|stop|restart|rm|help )
+        CMD=$1
+        shift 1
+        ;;
+esac
+
+if [ "$CMD" == "run" ]; then
+    # parse otions
+    while [[ $# -ge 1 ]]; do
+        case $1 in
+            -f )
+                payload_file=$2
+                shift 2
+                ;;
+            -v )
+                run_type=show
+                shift
+                ;;
+            -k )
+                skip_prepare=true
+                shift
+                ;;
+            --uuid )
+                vm_uuid=$2
+                [[ "$(is_uuid ${vm_uuid})" == "1" ]] || fatal "--uuid $2 not a valid uuid"
+                shift 2
+                ;;
+            --image_uuid )
+                image_uuid=$2
+                [[ "$(is_uuid ${image_uuid})" == "1" ]] || fatal "--image_uuid $2 not a valid uuid"
+                shift 2
+                ;;
+            --workdir )
+                workdir=$2
+                shift 2
+                ;;
+            --hostname )
+                hostname=$2
+                shift 2
+                ;;
+            --name )
+                name=$2
+                shift 2
+                ;;
+            --kernel_version )
+                kernel_version=$2
+                shift 2
+                ;;
+            --memory )
+                memory=$2
+                shift 2
+                ;;
+            --cpu_cap )
+                cpu_cap=$2
+                shift 2
+                ;;
+            --cpu_shares )
+                cpu_shares=$2
+                shift 2
+                ;;
+            --quota )
+                quota=$2
+                shift 2
+                ;;
+            --nic_ip )
+                nic_ip=$2                
+                shift 2
+                ;;
+            --nic_network )
+                nic_network=$2                
+                shift 2
+                ;;
+            --nic_gateway )
+                nic_gateway=$2
+                shift 2
+                ;;
+            --nic_vlan_id )
+                nic_vlan_id=$2
+                shift 2
+                ;;
+            --nic_tag )
+                nic_tag=$2
+                shift 2
+                ;;
+            --resolver )
+                resolvers=(${resolvers[@]} $2)
+                shift 2
+                ;;
+            --lofs_volume )
+                lofs_volumes=(${lofs_volumes[@]} $2)
+                shift 2
+                ;;
+            --env )
+                envs=(${envs[@]} $2)
+                shift 2
+                ;;
+            --cmd )
+                cmds=(${cmds[@]} $2)
+                shift 2
+                ;;
+            --entrypoint )
+                entrypoints=(${entrypoints[@]} $2)
+                shift 2
+                ;;        
+            -h|--help )
+                usage
+                ;;
+            * )
+                is_image_name=false
+                if [ $# -eq 1 ]; then
+                    [[ "${image_uuid}" == "" ]] && is_image_name=true
+                fi
+                if [ ${is_image_name} == true ]; then
+                    image_name=$1
+                    image_uuid="$(get_docker_image_uuid ${image_name})"
+                    if [ "${image_uuid}" == "" ]; then
+                        pull_quiet="true"
+                        do_pull $1
+                        image_uuid="$(get_docker_image_uuid ${image_name})"
+                    fi                    
+                    [[ "${image_uuid}" == "" ]] && fatal "${image_name} 不是有效的docker image"
+                    shift
+                else
+                    echo ""
+                    echo "不支持的参数: $1"
+                    echo ""
+                    usage
+                fi
+                ;;
+        esac
+    done
+
+    [[ "${nic_network}" == "" ]] && nic_network=${NETWORK_DEFAULT}
+    apply_network ${nic_network}
+    [[ "${nic_ip}" == "" ]] && nic_ip="dhcp"
+    if [ "${nic_ip}" != "dhcp" -a "$(echo ${nic_ip}|grep /)" == "" ]; then
+        nic_ip="${nic_ip}/${nic_netmask}"
+    fi
+
+    # do run
+    do_run
+fi
+
+if [ "$CMD" == "pull" ]; then
+    [[ $# -gt 2 ]] && usage 
+    if [ "$1" == "-q" ]; then
+        pull_quiet="true"
+        shift
+    fi   
+    [[ $# -eq 1 ]] || usage
+    do_pull $1
+fi
+
+if [ "$CMD" == "ps" ]; then
+    [[ $# -eq 0 ]] || usage  
+    do_ps
+fi
+
+if [ "$CMD" == "images" ]; then
+    if [ $# -eq 0 ]; then    
+        do_images
+    elif [ $# -eq 1 ]; then 
+        if [ "$1" == "--all" -o "$1" == "-a" ]; then
+            ddo_images_all
+        else
+            fatal "$1 不是有效的images命令有效的选项"
+        fi
+    else
+        fatal "images命令只支持 -a|--all 选项"
+    fi
+fi
+
+# smartos-docker logs [-f] <docker>
+if [ "$CMD" == "logs" ]; then       
+    [[ $# -gt 2 ]] && usage
+    if [ "$1" == "-f" ]; then
+        log_follow="true"
+        shift
+    fi    
+    [[ $# -eq 1 ]] || usage
+    do_logs $1
+fi
+
+if [ "$CMD" == "help" ]; then
+    [[ $# -eq 1 ]] || usage  
+    do_help $1
+fi
+
+if [ "$CMD" == "start" ]; then       
+    [[ $# -eq 1 ]] || usage
+    
+    do_start $1
+fi
+
+if [ "$CMD" == "restart" ]; then       
+    [[ $# -gt 2 ]] && usage
+    if [ "$1" == "-f" ]; then
+        restart_force="true"
+        shift
+    fi    
+    [[ $# -eq 1 ]] || usage
+    do_restart $1
+fi
+
+if [ "$CMD" == "rm" ]; then       
+    [[ $# -gt 2 ]] && usage
+    if [ "$1" == "-f" ]; then
+        rm_force="true"
+        shift
+    fi    
+    [[ $# -eq 1 ]] || usage
+    do_rm $1
+fi
+
+if [ "$CMD" == "rmi" ]; then       
+    [[ $# -eq 1 ]] || usage
+    [[ "$(is_uuid $1)" == "1" ]] || fatal "$1 not a valid uuid"    
+    do_rmi $1
+fi
+
+if [ "$CMD" == "stop" ]; then       
+    while [[ $# -ge 1 ]]; do
+        case $1 in
+            -f )
+                stop_force="true"
+                shift
+                ;;
+            -t )
+                stop_timeout=$2
+                shift 2
+                ;;
+            * )                
+                if [ $# -gt 1 ]; then
+                    echo ""
+                    echo "不支持的参数: $1"
+                    echo ""
+                    usage
+                fi
+                do_stop $1
+                shift
+                ;;
+        esac 
+    done   
+fi
