@@ -7,38 +7,38 @@ smartos-docker is a tool help manage docker on SmartOS GZ
 ## Setup
 1. clone the repository
     ```
-    https://github.com/2itcn/smartos-docker.git
+    git clone https://github.com/2itcn/smartos-docker.git
     ```
 1. change src/smartos-docker.conf as your env
     ```
-{
-    "networks": [
-        {
-            "name": "default", 
-            "tag": "external", 
-            "gw": "192.168.18.1",
-            "netmask": 24,
-            "resolvers": [
-                "192.168.18.1",
-                "8.8.8.8"
-            ],
-            "desc": "default network"
-        },
-        {
-            "name": "vlan1", 
-            "tag": "external", 
-            "vlan_id": 1, 
-            "netmask": 24,
-            "gw": "192.168.1.1",
-            "resolvers": [
-                "192.168.1.1",
-                "8.8.8.8"
-            ],
-            "desc": "network with vlan 1"
-        }
-    ],
-    "volume_base_store": "/export/lofs"
-}
+    {
+        "networks": [
+            {
+                "name": "default", 
+                "tag": "external", 
+                "gw": "192.168.18.1",
+                "netmask": 24,
+                "resolvers": [
+                    "192.168.18.1",
+                    "8.8.8.8"
+                ],
+                "desc": "default network"
+            },
+            {
+                "name": "vlan1", 
+                "tag": "external", 
+                "vlan_id": 1, 
+                "netmask": 24,
+                "gw": "192.168.1.1",
+                "resolvers": [
+                    "192.168.1.1",
+                    "8.8.8.8"
+                ],
+                "desc": "network with vlan 1"
+            }
+        ],
+        "volume_base_store": "/export/lofs"
+    }
     ```
     - networks: config networks that for docker container use
         - name: network name, there must have a network with name "default", this is the default network for docker container
@@ -60,8 +60,17 @@ smartos-docker is a tool help manage docker on SmartOS GZ
     chmod +x setup.sh
     ./setup.sh
     ```
-    - config file is copied to /opt/tools/etc/smartos-docker.conf
-    - smartos-docker is copied to /opt/tools/bin/smartos-docker, and linked as /opt/tools/bin/docker
+    - config file is copied to `/opt/tools/etc/smartos-docker.conf`
+    - smartos-docker has copied to `/opt/tools/bin/smartos-docker`, and linked as `/opt/tools/bin/docker`
+
+1. test
+    ```
+    docker -h
+    ```  
+    or   
+    ```
+    smartos-docker -h
+    ```
 
 **IMPORTANT**
 - before setup ensure the pkgin tools is installed at SmartOS GZ
@@ -74,50 +83,50 @@ smartos-docker is a tool help manage docker on SmartOS GZ
         ```
         imgadm sources -a https://docker.io -t docker
         ```
-- create volume_base_store dataset.
+- create `volume_base_store` dataset config in `/opt/tools/etc/smartos-docker.conf`.
 ## SYNOPSIS
 - `docker --help|-h`  
-show usage help
+show usage
 
-- `docker [run] [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`
+- `docker [run] [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
 create docker payload file and container
 
-- `docker start  <container>`
+- `docker start  <container>`  
 start docker container, ensure docker container status on `running`.
 
-- `docker stopt [-f|-t <timeout>] <container>`
+- `docker stopt [-f|-t <timeout>] <container>`   
 stop docker container, ensure docker container status on `stopped`.
 
-- `docker restart [-f]  <container>`
+- `docker restart [-f]  <container>`  
 restart docker container, ensure docker container status from `stopped` to `running`.
 
-- `docker rm [-f]  <container>`
+- `docker rm [-f]  <container>`  
 remove/delete docker container, the volume would not be deleted after container deleted.
 
-- `docker logs [-f] <container>`
+- `docker logs [-f] <container>`  
 show docker container's logs
 
-- `docker pull [-q] <docker_image>`  
+- `docker pull [-q] <docker_image>`    
 pull docker image
 
-- `docker ps [--all|-a]` 
+- `docker ps [--all|-a]`   
 show docker containers
 
-- `docker images [--all|-a]`  
+- `docker images [--all|-a]`   
 show docker images
 
-- `docker rmi <image_uuid>` 
+- `docker rmi <image_uuid>`   
 remove docker image
 
-- `docker help <sub_command>` 
+- `docker help <sub_command>`   
 show docker sub command usage
 
 ## SUBCOMMANDS
 ### docker --help|-h
-show usage help
+show usage
 
 ### docker run
-- `docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`
+- `docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
     create a new payload file at the current directory named with `<container_uuid>.json` and create the docker container. if `-n` option is setted, then only create a new payload file and NOT create the docker container.  
     if any arg where `-f <payload_file>` and options both setted. the options's value is used. and the options's value will override the arg on the new payload file.   
     ***volume lofs filesystems*** the lofs-volume source filesystem creatition followed by the rules:    
@@ -133,27 +142,27 @@ show usage help
     - `[-k]` skip payload file property replace, only used with `-f`
     - `[-n]` skip create docker container, only genarate payload file
     - `[--uuid <container_uuid>]` special the docker container's uuid, if not set, a randon uuid will be set.
-        - zone's uuid
+        - zone's `uuid`
     - `[--name <name>] special the docker container's name, if not set, default is `-`.
-        - zone's alias
+        - zone's `alias`
     - `[--hostname <hostname>]` special the docker container's hostname, if not set, default is the container's uuid
-        - zone's hostname
+        - zone's `hostname`
     - `[--memory|-m <memory>]` special the docker container's memory, unit is MB, if not set, default is 512.
-        - zone's max_physical_memory
+        - zone's `max_physical_memory`
     - `[--cpu_cap <cpu_cap>]` Sets a limit on the amount of CPU time for the docker container, The unit used is the percentage of a single CPU that can be used, Eg. 300 means up to 3 full cpus, 0 means no limited
-        - zone's cpu_cap
+        - zone's `cpu_cap`
     - `[--cpu_shares <cpu_shares>]` Sets a limit on the number of fair share scheduler (FSS) CPU shares for docker container. the container with 50 will get 5x as much time from the scheduler as the one with 10 when there is contention.
-        - zone's cpu_shares
-    - `[--io <io_priority>]` Sets an IO throttle priority value relative to other zones, If one zone has a value X and another zone has a value 2X, the zone with the X value will have some of its IO throttled when both try to use all available IO. default value is 100.
-        - zone's zfs_io_priority
-    - `[--quota <quota>]` Sets a quota on the zone filesystem for the docker container. the unit is GB
+        - zone's `cpu_shares`
+    - `[--io <io_priority>]` Sets an IO throttle priority value relative to other zones, If one zone has a value X and another zone has a value 2X, the zone with the X value will have some of its IO throttled when both try to use all available IO. default value is `100`.
+        - zone's `zfs_io_priority`
+    - `[--quota <quota>]` Sets a quota on the zone filesystem for the docker container. the unit is `GB`
         - zone's quota
     - `[--network <network_name>]` Sets network for the docker container. default value is `default`
-        - network name must config in in smartos-docker.conf
+        - network name must config in in `smartos-docker.conf`
     - `[--ip <ip>]` Sets ip address for the docker container. default value is `dhcp`
         - format as:
             - `xxx.xxx.xxx.xxx/xx`
-            - `xxx.xxx.xxx.xxx` the netmask read from the selected network configuration, if not configed, return 24.
+            - `xxx.xxx.xxx.xxx` the netmask read from the selected network configuration, if not configed, return `24`.
             - `dhcp` from dhcp server, and then the ip will be set as static ip.
     - `[--nic_tag <nic_tag>]` Sets the nic_tag for docker container, default read from the selected network configuration, if not configed, return `admin`.
     - `[--gateway <gateway>]` Sets the gateway for docker container, default read from the selected network configuration, if not configed, will be ignored.
@@ -178,7 +187,7 @@ show usage help
                     - `File` if the directory path not exists, the directory will be auto-created before docker container creating.
                         - create as zfs dataset, failed if create zfs dataset failed.
                         - copy the container target file to the source path.
-                - if source not exists at docker container creating and target has owner flag. then after source created the chown will be executed. 
+                - if `source` not exists before docker container creating and `target` has owner `flag`. then after source created the chown will be executed. 
             - `target`: the mount path in docker container. format as `<path>[*flag[*flag]]`
                 - `path` the mount path in docker container
                 - `flag` target flag
@@ -187,10 +196,10 @@ show usage help
                         - `1000` act `chown -R 1000`
                         - `/1000` act `chown -R :1000`
                         - `1000/1000` act `chown -R 1000:1000`
-                        - is it get from a temp conainer better? like dhcp ip.
+                        - is it get from a temp conainer better? like `dhcp` ip.
             - `options`: mount options, just lofs mount options
                 - `ro`
-    - `[--kernel_version <kernel_version>]` linux kernel version, default value is 4.3.0(ubuntu-20.04)
+    - `[--kernel_version <kernel_version>]` linux kernel version, default value is `4.3.0`(ubuntu-20.04)
     - `[--workdir <workdir>]` Sets work dir for the docker container, default read from the docker image.    
     - `[--env|-e <env>]` Sets environment variables for the docker container.
         - can be set many times
@@ -234,7 +243,7 @@ list downloaded images on the host.
     - `[--all|-a]` show all layers
 
 ### docker rmi
-- docker rmi <image_uuid>  
+- docker rmi `<image_uuid>`  
 remove/delete a docker image
 
     - `<image_uuid>` the uuid of the docker image than want to be deleted
@@ -250,16 +259,14 @@ list running docker containers on the host.
 - `docker help <sub_command>`
 show docker sub command usage
 
-    - `sub_command`: sub command, `run`|`start`|`stop`|`restart`|`pull`|`ps`|`logs`|`images`|`help`
-
-
+    - `sub_command`: sub command, one of: `run|pull|ps|logs|images|start|stop|restart|rm|rmi|help`
 
 ## payload file
 1. min properties
     - `image_uuid`: docker image uuid, and the image must be imported to host already.
         `imgadm import <image_name>[:<image_tag>]` or `docker pull <image_name>[:<image_tag>`        
     - `nics`: must set a static ip, or the container can't access outside the container.
-        - `dhcp`, when ip set to `dhcp`, before docker container creating, the docker cli create a template zone first. when get ip from the dhcp server. then delete the temp zone, and set the ip to the payload file.
+        - `dhcp`, when `--ip` set to `dhcp`, before docker container creating, the docker cli create a template zone. when recieve an ip from the dhcp server,  delete the temp zone, and set the ip to the payload file.
     - example:
         ```
         {        
@@ -277,7 +284,7 @@ show docker sub command usage
         }
         ```
 1. max properties
-    - no limited, ref to os zone properties (https://www.smartos.org/man/1m/vmadm)
+    - ref to os zone properties (https://www.smartos.org/man/1m/vmadm)
 
 ## EXAMPLES
 ### Example 1: show usage
@@ -330,7 +337,7 @@ Imported image 60ca3e70-50b6-4c12-c9e3-764d8aa94ff3 (docker-layer@b3a99ef00ca4)
 Imported image 7ee3021f-c1ed-9f08-4ff2-9ea4a70a4c03 (docker-layer@53c0509e0994)
 ```
 
-### Example 4: Simple run docker container with create. only get the payload file.
+### Example 4: run docker container with less options. only get the payload file, not create docker container.
 ```
 [root@smartos02 ~]# docker run -n --cmd 'minio server /data --console-address :9001' minio/minio
 payload file saved at f115014a-7486-11ed-aa33-54bf6464aaf5.json
@@ -370,6 +377,7 @@ payload file saved at f115014a-7486-11ed-aa33-54bf6464aaf5.json
   ]
 }
 ```
+- `-n` option means NOT create docker container
 
 ### Example 4: create a docker container from a payload file. skip the payload file replace.
 ```
@@ -377,6 +385,7 @@ payload file saved at f115014a-7486-11ed-aa33-54bf6464aaf5.json
 docker container's ip is 192.168.59.63/24
 Successfully created VM f115014a-7486-11ed-aa33-54bf6464aaf5
 ```
+- `-k` option means NOT replace payload file with options
 ### Example 5: list all docker containers
 ```
 [root@smartos02 ~]# docker ps -a
@@ -384,6 +393,7 @@ UUID                                  TYPE  RAM      CPU_CAP  CPU_SHARE  QUOTA  
 4dcfad04-7478-11ed-b86b-54bf6464aaf5  LX    512      -        100        10     stopped           docker-minio01
 f115014a-7486-11ed-aa33-54bf6464aaf5  LX    512      -        100        10     running           -
 ```
+- `-a` options means list all docker container, even not in `running` state
 
 ### Example 6: Create docker payload with more options
 ```
@@ -504,8 +514,8 @@ Successfully deleted VM d89700e0-0895-11ec-a012-2f97c366acc7
         ```
 
 ## TODO:
-1. nfs volume
-1. lofs_volume owner autoset.
+1. add nfs volume
+1. auto check lofs_volume owner.
 1. fwadm integrate
 1. innernet ip
 
