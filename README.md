@@ -305,7 +305,7 @@ Usage
     docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]
     docker logs [-f] <container>
     docker pull [-q] <docker_image>
-    docker ps
+    docker ps [--all|-a]
     docker images [--all|-a]
     docker rmi <image_uuid>
     docker start <container>
@@ -405,9 +405,9 @@ f115014a-7486-11ed-aa33-54bf6464aaf5  LX    512      -        100        10     
 ```
 - `-a` options means list all docker container, even not in `running` state
 
-### Example 6: Create docker payload with more options
+### Example 6: Create docker payload with static ip and more options
 ```
-[root@smartos02 ~]# docker run \
+[root@smartos02 ~]# docker run -n \
 > --uuid d89700e0-0895-11ec-a012-2f97c366acc7 \
 > --name docker-redis01 \
 > --hostname redis01 \
