@@ -8,10 +8,10 @@ docker pull jumpserver/jms_all:v2.13.2
 ## step
 1. Genarate SECRET_KEY
   - before update or migration please check `SECRET_KEY` is the same as old version, don't make randon SECRET_KEY, or the database can't be read.
-  1. `SECRET_KEY`
-    `LC_CTYPE=UTF-8 tr -dc A-Za-z0-9 < /dev/urandom | head -c 50`
-  1. `BOOTSTRAP_TOKEN`
-    `LC_CTYPE=UTF-8 tr -dc A-Za-z0-9 < /dev/urandom | head -c 16`
+    1. `SECRET_KEY`
+      `LC_CTYPE=UTF-8 tr -dc A-Za-z0-9 < /dev/urandom | head -c 50`
+    1. `BOOTSTRAP_TOKEN`
+      `LC_CTYPE=UTF-8 tr -dc A-Za-z0-9 < /dev/urandom | head -c 16`
 
 1. Sets available env vars:
   - SECRET_KEY = **
@@ -97,12 +97,11 @@ docker pull jumpserver/jms_all:v2.13.2
 1. change paylad file as needed.
 
 1. create docker container with the payload file.
-```
-[root@smartos02 ~]# docker run -k -f 146a432e-07e3-11ec-92bd-b3d7fa240dde.json
-docker container's ip is 192.168.59.98/24
-Successfully created VM 146a432e-07e3-11ec-92bd-b3d7fa240dde
-
-```
+  ```
+  [root@smartos02 ~]# docker run -k -f 146a432e-07e3-11ec-92bd-b3d7fa240dde.json
+  docker container's ip is 192.168.59.98/24
+  Successfully created VM 146a432e-07e3-11ec-92bd-b3d7fa240dde
+  ```
 
 ## Visit:
 http://192.168.59.98

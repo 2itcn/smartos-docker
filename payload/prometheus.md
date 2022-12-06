@@ -1,5 +1,5 @@
 # prometheus
-## docker images
+## docker image
 prom/prometheus:v2.28.1
 
 ```
@@ -19,60 +19,60 @@ docker pull prom/prometheus:v2.28.1
   -v prometheus.yml:/etc/prometheus/prometheus.yml*f*nobody4/nogroup \
   prom/prometheus:v2.28.1
   ```
-- payload file: 
-  ```
-  {
-    "uuid": "f38a928e-ed67-11eb-8010-1bf1367f470a",
-    "max_physical_memory": 512,
-    "image_uuid": "1d6f4b9a-acb0-dcfa-bc0a-29e8833a8ae3",
-    "resolvers": [
-      "192.168.81.253",
-      "8.8.8.8"
-    ],
-    "nics": [
-      {
-        "nic_tag": "external",
-        "ips": [
-          "dhcp"
-        ],
-        "primary": true,
-        "gateway": "192.168.59.254",
-        "vlan_id": 59
+  - payload file: 
+    ```
+    {
+      "uuid": "f38a928e-ed67-11eb-8010-1bf1367f470a",
+      "max_physical_memory": 512,
+      "image_uuid": "1d6f4b9a-acb0-dcfa-bc0a-29e8833a8ae3",
+      "resolvers": [
+        "192.168.81.253",
+        "8.8.8.8"
+      ],
+      "nics": [
+        {
+          "nic_tag": "external",
+          "ips": [
+            "dhcp"
+          ],
+          "primary": true,
+          "gateway": "192.168.59.254",
+          "vlan_id": 59
+        }
+      ],
+      "hostname": "prometheus01",
+      "alias": "docker-prometheus01",
+      "filesystems": [
+        {
+          "source": "/export/lofs/docker-prometheus01/volumes/data",
+          "type": "lofs",
+          "target": "/prometheus"
+        },
+        {
+          "source": "/export/lofs/docker-prometheus01/volumes/prometheus.yml",
+          "type": "lofs",
+          "target": "/etc/prometheus/prometheus.yml"
+        }
+      ],
+      "kernel_version": "4.3.0",
+      "docker": true,
+      "brand": "lx",
+      "internal_metadata_namespaces": [
+        "itime"
+      ],
+      "internal_metadata": {
+        "docker:entrypoint": "[\"/bin/prometheus\"]",
+        "docker:cmd": "[\"--config.file=/etc/prometheus/prometheus.yml\",\"--storage.tsdb.path=/prometheus\",\"--web.console.libraries=/usr/share/prometheus/console_libraries\",\"--web.console.templates=/usr/share/prometheus/consoles\"]",
+        "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"]",
+        "docker:workingdir": "\"/prometheus\"",
+        "docker:workdir": "\"/prometheus\"",
+        "docker:open_stdin": "true",
+        "docker:tty": "true",
+        "itime:lofs_attr": "[{ \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/data\", \"target\": \"/prometheus\" }, { \"isfile\": true, \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/prometheus.yml\", \"target\": \"/etc/prometheus/prometheus.yml\" }]",
+        "itime:network": "default"
       }
-    ],
-    "hostname": "prometheus01",
-    "alias": "docker-prometheus01",
-    "filesystems": [
-      {
-        "source": "/export/lofs/docker-prometheus01/volumes/data",
-        "type": "lofs",
-        "target": "/prometheus"
-      },
-      {
-        "source": "/export/lofs/docker-prometheus01/volumes/prometheus.yml",
-        "type": "lofs",
-        "target": "/etc/prometheus/prometheus.yml"
-      }
-    ],
-    "kernel_version": "4.3.0",
-    "docker": true,
-    "brand": "lx",
-    "internal_metadata_namespaces": [
-      "itime"
-    ],
-    "internal_metadata": {
-      "docker:entrypoint": "[\"/bin/prometheus\"]",
-      "docker:cmd": "[\"--config.file=/etc/prometheus/prometheus.yml\",\"--storage.tsdb.path=/prometheus\",\"--web.console.libraries=/usr/share/prometheus/console_libraries\",\"--web.console.templates=/usr/share/prometheus/consoles\"]",
-      "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"]",
-      "docker:workingdir": "\"/prometheus\"",
-      "docker:workdir": "\"/prometheus\"",
-      "docker:open_stdin": "true",
-      "docker:tty": "true",
-      "itime:lofs_attr": "[{ \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/data\", \"target\": \"/prometheus\" }, { \"isfile\": true, \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/prometheus.yml\", \"target\": \"/etc/prometheus/prometheus.yml\" }]",
-      "itime:network": "default"
     }
-  }
-  ```
+    ```
 1. change paylad file as needed.
 
 1. create docker container with the payload file.

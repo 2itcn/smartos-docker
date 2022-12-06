@@ -1,5 +1,5 @@
 # percona-server
-## docker images
+## docker image
 percona/percona-server:8.0.25
 
 ```
@@ -22,7 +22,6 @@ docker pull percona/percona-server:8.0.25
   --cmd "mysqld --user=mysql --character-set-server=utf8mb4 --collation-server=utf8mb4_general_ci" \
   percona/percona-server:8.0.25
   ```
-
   - payload file: 
     ```
     {

@@ -1,5 +1,5 @@
 # minio
-## docker images
+## docker image
 minio/minio:RELEASE.2021-07-22T05-23-32Z
 
 ```
@@ -18,7 +18,7 @@ docker pull minio/minio:RELEASE.2021-07-22T05-23-32Z
   --cmd 'minio server /data --console-address :9001' \
   minio/minio:RELEASE.2021-07-22T05-23-32Z
   ```
-  - payload file: b7dc24cc-ed5e-11eb-abcd-434a7243708b.json
+  - payload file
     ```
     {
       "uuid": "30971f84-7490-11ed-907e-54bf6464aaf5",
