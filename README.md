@@ -128,22 +128,22 @@ show usage
 ### docker run
 - `docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
     create a new payload file at the current directory named with `<container_uuid>.json` and create the docker container. if `-n` option is setted, then only create a new payload file and NOT create the docker container.  
-    if any arg where `-f <payload_file>` and options both setted. the options's value is used. and the options's value will override the arg on the new payload file.   
+    if `-f <payload_file>` and any options were provided. the options's value is used. and the options's value will override the properties on the new payload file.   
     ***volume lofs filesystems*** the lofs-volume source filesystem creatition followed by the rules:    
-        1. if `source` path is exists on SmartOS GZ, doing nothing, else go next.
-        1. if `source` is `create-volume` , then create local dataset, see as `lofs_volume` below. else go next.
-        1. if `source` parent is an exists filesystem, then create all sub-filesystem on the parent-filesystem. else go next
-        1. if `source` can't find an exists parent filesystem, failed. 
-            - failed as current action. 
-            - maybe create the source path on SmartOS GZ insteed create filesystem?
-            - config a base filesystem, all lofs volume be create on the filesystem, like `<base_filesystem>/<vm_uuid>/sub_path`?
+    1. if `source` path is exists on SmartOS GZ, doing nothing, else go next.
+    1. if `source` is `create-volume` , then create local dataset, see as `lofs_volume` below. else go next.
+    1. if `source` parent is an exists filesystem, then create all sub-filesystem on the parent-filesystem. else go next
+    1. if `source` can't find an exists parent filesystem, failed. 
+        - failed as current action. 
+        - maybe create the source path on SmartOS GZ insteed create filesystem?
+        - config a base filesystem, all lofs volume be create on the filesystem, like `<base_filesystem>/<vm_uuid>/sub_path`?
 
     - `[-f <payload_file>]` base payload file
     - `[-k]` skip payload file property replace, only used with `-f`
     - `[-n]` skip create docker container, only genarate payload file
     - `[--uuid <container_uuid>]` special the docker container's uuid, if not set, a randon uuid will be set.
         - zone's `uuid`
-    - `[--name <name>] special the docker container's name, if not set, default is `-`.
+    - `[--name <name>]` special the docker container's name, if not set, default is `-`.
         - zone's `alias`
     - `[--hostname <hostname>]` special the docker container's hostname, if not set, default is the container's uuid
         - zone's `hostname`
@@ -158,12 +158,12 @@ show usage
     - `[--quota <quota>]` Sets a quota on the zone filesystem for the docker container. the unit is `GB`
         - zone's quota
     - `[--network <network_name>]` Sets network for the docker container. default value is `default`
-        - network name must config in in `smartos-docker.conf`
+        - network name must be configed in `smartos-docker.conf`
     - `[--ip <ip>]` Sets ip address for the docker container. default value is `dhcp`
         - format as:
             - `xxx.xxx.xxx.xxx/xx`
             - `xxx.xxx.xxx.xxx` the netmask read from the selected network configuration, if not configed, return `24`.
-            - `dhcp` from dhcp server, and then the ip will be set as static ip.
+            - `dhcp` from dhcp server, and then the ip will be set as static ip in new payload file after docker container created.
     - `[--nic_tag <nic_tag>]` Sets the nic_tag for docker container, default read from the selected network configuration, if not configed, return `admin`.
     - `[--gateway <gateway>]` Sets the gateway for docker container, default read from the selected network configuration, if not configed, will be ignored.
         - format as `xxx.xxx.xxx.xxx`
@@ -171,23 +171,23 @@ show usage
     - `[--resolver <resolver>]` Sets the vlan_id for docker container, default read from the selected network configuration
         - format as `<ips>`
             - `xxx.xxx.xxx.xxx`
-            - `xxx.xxx.xxx.xxx xxx.xxx.xxx.xxx`
+            - `"xxx.xxx.xxx.xxx xxx.xxx.xxx.xxx"`
         - can be set many times
-        - if not set and network not configed, default is: `8.8.8.8 4.4.4.4`
+        - if not set and network not configed, default is: `"8.8.8.8 4.4.4.4"`
     - `[--lofs_volume|-v <lofs_volume>]` Sets lofs volume for the docker container.
         - volume mount as filesystems
         - can set many times
-        - format as `[<source>]:<target>[:<options>]` or `[<source>]:<target>[:<options>] [<source>]:<target>[:<options>] ...`
+        - format as `[<source>]:<target>[:<options>]` or `"[<source>]:<target>[:<options>] [<source>]:<target>[:<options>] ..."`
             - `source`: directory or file on SmartOS GZ
                 - if the source not start with `/`, then the source path is `${volume_base_store}/${source}`, `volume_base_store` is configed in `smartos-docker.conf` file.
-                - in new SmartOS(PI >= 20210506T001621Z) can be omited, SmartOS GZ screate a zfs filesystem on: `/zones/<vm_uuid>/volumes/<volume_uuid>`
+                - in new SmartOS(PI >= `20210506T001621Z`) can be omited, SmartOS GZ screate a zfs filesystem on: `/zones/<vm_uuid>/volumes/<volume_uuid>`
                 - if the source not exists in SmartOS GZ
                     - `Directory` the source directory will be auto-created before docker container creating.
                         - create as zfs dataset, failed if create zfs dataset failed.
                     - `File` if the directory path not exists, the directory will be auto-created before docker container creating.
                         - create as zfs dataset, failed if create zfs dataset failed.
                         - copy the container target file to the source path.
-                - if `source` not exists before docker container creating and `target` has owner `flag`. then after source created the chown will be executed. 
+                - if `source` not exists before docker container creating and `target` has owner `flag`. then after `source` created the `chown` cmd will be executed. 
             - `target`: the mount path in docker container. format as `<path>[*flag[*flag]]`
                 - `path` the mount path in docker container
                 - `flag` target flag
@@ -204,14 +204,17 @@ show usage
     - `[--env|-e <env>]` Sets environment variables for the docker container.
         - can be set many times
         - format as `--env var1=value1` or `--env "var1=value1 var2=value2"`
+        - ** will add or replace default env var **
     - `[--entrypoint <entrypoint>]` Sets Entrypoint for the docker container
         - can be set many times. the follows is equal.
             - `--entrypoint bash --entrypoint scriptfile`
             - `--entrypoint "bash scriptfile"`
+        - **will `replace` the default Entrypoint**
     - `[--cmd <cmd>]` Sets Cmd for the docker container
         - can be set many times. the follows is equal.
             - `--cmd bash --cmd scriptfile`
             - `--cmd "bash scriptfile"`
+        - **will `replace` the the default Cmd**
     - `[--image_uuid <image_uuid>]` docker image uuid, if the option setted, the `<image_name>` arg will be ignored
     - `<docker_image>` docker image
         - if provide the arg, must be the end of the command.
@@ -221,14 +224,14 @@ show usage
 
 
 ### docker logs
-- `smartos-docker logs [-f] <container>`
+- `smartos-docker logs [-f] <container>`  
 show docker container logs
 
     - `[-f]` trace logs
     - `<container>` docker container name or uuid
 
 ### docker pull
-- `docker pull [-q] <docker_image>`
+- `docker pull [-q] <docker_image>`  
 pull docker image
 
     - `[-q]` quiet mode, if set, will not show the download progress.
@@ -237,31 +240,38 @@ pull docker image
             - if `<tag>` not provided, the default tag is `latest`
 
 ### docker images
-- docker images
+- docker images    
 list downloaded images on the host.
 
     - `[--all|-a]` show all layers
 
 ### docker rmi
-- docker rmi `<image_uuid>`  
+- docker rmi `<image_uuid>`   
 remove/delete a docker image
 
     - `<image_uuid>` the uuid of the docker image than want to be deleted
 
 ### docker ps
-- smartos-docker ps
+- smartos-docker ps  
 list running docker containers on the host.
 
     - `[--all|-a]` list all docker containers on the host. even not in running state.
 
 
 ### docker help
-- `docker help <sub_command>`
+- `docker help <sub_command>`  
 show docker sub command usage
 
     - `sub_command`: sub command, one of: `run|pull|ps|logs|images|start|stop|restart|rm|rmi|help`
 
 ## payload file
+payload file is LX brand vm metadata json file with docker special properties. any LX brand vm properties can alse be add to the file.  
+if all lofs volume already exists in SmartOS GZ and IP is not `dhcp` then can use `vmadm create -f paylaod.json` create the docker container.  
+use docker cli create docker container is recommanded.
+```
+docker run -k -f payload.json
+```
+
 1. min properties
     - `image_uuid`: docker image uuid, and the image must be imported to host already.
         `imgadm import <image_name>[:<image_tag>]` or `docker pull <image_name>[:<image_tag>`        
@@ -470,6 +480,7 @@ payload file saved at d89700e0-0895-11ec-a012-2f97c366acc7.json
   }
 }
 ```
+- if the image is not pulled before `run`, will auto pull image first
 
 ### Example 7: create a docker container from a payload file. skip the payload file replace.
 ```
@@ -477,7 +488,7 @@ payload file saved at d89700e0-0895-11ec-a012-2f97c366acc7.json
 Successfully created VM d89700e0-0895-11ec-a012-2f97c366acc7
 ```
 
-### Example 8: Create docker container from docker cli derictory
+### Example 8: Create docker container directly.
 ```
 [root@smartos02 ~]# docker run \
 > --uuid d89700e0-0895-11ec-a012-2f97c366acc7 \
@@ -492,26 +503,29 @@ Successfully created VM d89700e0-0895-11ec-a012-2f97c366acc7
 payload file saved at d89700e0-0895-11ec-a012-2f97c366acc7.json
 Successfully created VM d89700e0-0895-11ec-a012-2f97c366acc7
 ```
+- without `-n` option, the run cmd will create a new payload file and create docker container with the new payload file.
 
-### Example 9: Delete docker ontainer
+### Example 9: Delete docker container
 ```
 [root@smartos02 ~]# docker rm -f d89700e0-0895-11ec-a012-2f97c366acc7
 Successfully deleted VM d89700e0-0895-11ec-a012-2f97c366acc7
 ```
+- `-f` option means force delete, even the docker container in `running` state
 
-## Recommended Practice
+## Recommended Step for Docker Cli
 1. Config networks and volume_base_store.
-1. Create a payload doc file for every docker image.(see payload dir)
-    - docker image
-    - create payload file cmd
-    - save payload file
+1. Create a payload doc file for each docker image.(see `payload` dir)
+    - docker image and tag
+    - the cmd of `docker run`
+    - the payload file
     - create docker image from payload file
     - add notices if have any
-1. some of docker run maybe failed without  without correct config the options, it best to create payload doc file for share. 
-    - check image config info and change docker run options
+1. some of docker container creation maybe failed without correct options.
+    - check image config info and set your own options of `docker run`
         ```
         imgadm get image_uuid | json manifest.tags.docker:config
         ```
+        - it best to create a payload doc file for share the options. 
 
 ## TODO:
 1. add nfs volume
