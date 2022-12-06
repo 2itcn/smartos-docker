@@ -1,5 +1,5 @@
 # percona-server
-## docker images
+## docker image
 jumpserver/jms_all:v2.13.2
 
 ```
