@@ -51,7 +51,7 @@ function usage_help(){
 
 
 function usage_run(){
-    echo "  docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]" 
+    echo "  docker run [-n] [[-k] -f <payload_file>] [--ports|-p <ports>] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]" 
     
     echo """    create a new payload file at the current directory named with <container_uuid>.json and create the docker container. if -n option is setted, then only create a new payload file and NOT create the docker container.  
     if any arg where -f <payload_file> and options both setted. the options's value is used. and the options's value will override the arg on the new payload file.   
@@ -71,6 +71,10 @@ function usage_run(){
     echo "      -f <payload_file> payload file, base payload file"    
     echo "      -k skip payload file property replace, only used with -f"   
     echo "      -n skip create docker container, only genarate payload file"
+    echo "      --ports|-p <ports> export port, formart as -p 80 or -p \"80 443\""
+    echo "          - can set many times"
+    echo "          - if setted, only the special ports can be accessed outside the docker container."
+    echo "          - default all ports can be accessed outside the docker container."
     echo "      --uuid <container_uuid> special the docker container's uuid, if not set, a randon uuid will be set"
     echo "      --name <name> special the docker container's name, if not set, default is -."
     echo "      --hostname <hostname> special the docker container's hostname, if not set, default is the container's uuid"
@@ -400,6 +404,8 @@ function prepare_metadata(){
         val=${resolvers[@]}
         json_string=$(echo ${json_string} | json -e "this.resolvers=['${val// /\',\'}']")
     fi
+
+    
     if [ "${#lofs_volumes[*]}" != "0" ]; then
         local lofs_basename=$(echo ${json_string} | json alias)
         [[ "${lofs_basename}" != "" ]] || lofs_basename=${vm_uuid}
@@ -496,6 +502,11 @@ function prepare_metadata(){
         internal_metadata="${internal_metadata},'${internal_namespace}:lofs_attr':\"$(echo ${lofs_attr}|sed 's/"/\\"/g')\""        
     fi
 
+    if [ "${#ports[*]}" != "0" ]; then
+        val=${ports[@]}
+        internal_metadata="${internal_metadata},'${internal_namespace}:ports':\"${val}\""
+    fi
+
     internal_metadata="${internal_metadata},'${internal_namespace}:network': \"${nic_network}\"}"
 
     json_code="this.internal_metadata_namespaces=[\"${internal_namespace}\"]; this.internal_metadata=${internal_metadata}; "
@@ -535,12 +546,19 @@ function do_images_all(){
     imgadm list -o uuid,docker_repo,docker_tags,version,pub type=docker
 }
 
-function do_logs(){
+function get_docker_uuid(){
     local zone=$1
     if [ "$(is_uuid ${zone})" == "0" ]; then
         zone=$(vmadm lookup docker=true alias=${zone})
+    else
+        zone=$(vmadm lookup docker=true uuid=${zone})
     fi
-    [[ "${zone}" != "" ]] || fatal "docker $1 not exists or not a docker container"
+    [[ "${zone}" != "" ]] || fatal "docker \"$1\" not exists or not a docker container."
+    echo "${zone}"
+}
+
+function do_logs(){
+    local zone=$(get_docker_uuid $1)
     if [ "${log_follow}" ==  "true" ]; then
         tail -f /zones/${zone}/logs/stdio.log | bunyan
     else
@@ -549,20 +567,12 @@ function do_logs(){
 }
 
 function do_start(){
-    local zone=$1
-    if [ "$(is_uuid ${zone})" == "0" ]; then
-        zone=$(vmadm lookup docker=true alias=${zone})
-    fi
-    [[ "${zone}" != "" ]] || fatal "docker $1 not exists or not a docker container"
+    local zone=$(get_docker_uuid $1)
     vmadm start ${zone}
 }
 
 function do_stop(){
-    local zone=$1
-    if [ "$(is_uuid ${zone})" == "0" ]; then
-        zone=$(vmadm lookup docker=true alias=${zone})
-    fi
-    [[ "${zone}" != "" ]] || fatal "docker $1 not exists or not a docker container"
+    local zone=$(get_docker_uuid $1)
     local options=""
     [[ "${stop_force}" !=  "true" ]] || options=" -F "
     [[ "${stop_timeout}" ==  "" ]] || options="${options} -t ${stop_timeout}"
@@ -570,11 +580,7 @@ function do_stop(){
 }
 
 function do_restart(){
-    local zone=$1
-    if [ "$(is_uuid ${zone})" == "0" ]; then
-        zone=$(vmadm lookup docker=true alias=${zone})
-    fi
-    [[ "${zone}" != "" ]] || fatal "docker $1 not exists or not a docker container"
+    local zone=$(get_docker_uuid $1)
     local options=""
     [[ "${restart_force}" !=  "true" ]] || options=" -F "
    
@@ -582,11 +588,7 @@ function do_restart(){
 }
 
 function do_rm(){
-    local zone=$1
-    if [ "$(is_uuid ${zone})" == "0" ]; then
-        zone=$(vmadm lookup docker=true alias=${zone})
-    fi
-    [[ "${zone}" != "" ]] || fatal "docker $1 not exists or not a docker container"
+    local zone=$(get_docker_uuid $1)
     local state=$(vmadm get ${zone} | json state)
     if [ "${state}" == "running" -a "${rm_force}" !=  "true"  ]; then
         fatal "docker $1 is in ${state} status, please stop it or with -f option"
@@ -652,7 +654,7 @@ EOF
     fi
 
     if [ "${run_type}" == "run" ]; then        
-        do_volume ${new_payload_file}
+        ensure_volume ${new_payload_file}
 
         ip=$(json -f ${new_payload_file} nics.0.ips.0)
         if [ "${ip}" == "dhcp" ]; then            
@@ -666,13 +668,43 @@ EOF
             echo ${temp_json_content} | json > ${new_payload_file}
         fi
         vmadm create -f ${new_payload_file}
+        local ports=$(json -f ${new_payload_file} internal_metadata.${internal_namespace}:ports)
+        if [ "${ports}" != null ]; then
+            ensure_ports ${vm_uuid} "${ports}"
+        fi
     elif [ "${run_type}" == "show" ]; then    
         echo ""
         json -f ${new_payload_file}
     fi
 }
 
-function do_volume(){
+function do_ports(){
+    local vm_uuid=$(get_docker_uuid $1)
+    local ports="$2"
+    if [ "${ports}" == "" ]; then
+        ports=vmadm get ${vm_uuid} | json internal_metadata.${internal_namespace}:ports
+    else
+        vmadm update ${vm_uuid} internal_metadata.${internal_namespace}:ports="${ports}"
+    fi
+    ensure_ports ${vm_uuid} "${ports}"
+}
+
+function ensure_ports(){
+    local vm_uuid=$1
+    local ports="$2"
+    if [ "${ports}" == "" ]; then
+        fwadm stop ${vm_uuid}
+    else
+        fwadm start ${vm_uuid}
+        #fwadm add -g -e FROM any TO vm ${vm_uuid} ALLOW tcp PORT 22
+        for port in ${ports}
+        do
+            fwadm add -g -e FROM any TO vm ${vm_uuid} ALLOW tcp ${port}
+        done
+    fi
+}
+
+function ensure_volume(){
     local filename=$1
     local volume_attrs=$(json -f ${filename} internal_metadata.${internal_namespace}:lofs_attr)
     [[ "${volume_attrs}" != "" ]] || volume_attrs="[]"
@@ -744,6 +776,7 @@ nic_tag=""
 nic_netmask=24
 resolvers=()
 lofs_volumes=()
+ports=()
 skip_prepare=false
 zfs_io_priority=100
 
@@ -858,6 +891,10 @@ if [ "$CMD" == "run" ]; then
                 ;;
             --env|-e )
                 envs=(${envs[@]} $2)
+                shift 2
+                ;;
+            --ports|-p )
+                ports=(${ports[@]} $2)
                 shift 2
                 ;;
             --cmd )
