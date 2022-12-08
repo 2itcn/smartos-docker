@@ -88,7 +88,7 @@ smartos-docker is a tool help manage docker on SmartOS GZ
 - `docker --help|-h`  
 show usage
 
-- `docker [run] [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
+- `docker [run] [-n] [[-k] -f <payload_file>] [--ports|-p <ports>] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
 create docker payload file and container
 
 - `docker start  <container>`  
@@ -126,7 +126,7 @@ show docker sub command usage
 show usage
 
 ### docker run
-- `docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
+- `docker run [-n] [[-k] -f <payload_file>] [--ports|-p <ports>] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]`  
     create a new payload file at the current directory named with `<container_uuid>.json` and create the docker container. if `-n` option is setted, then only create a new payload file and NOT create the docker container.  
     if `-f <payload_file>` and any options were provided. the options's value is used. and the options's value will override the properties on the new payload file.   
     ***volume lofs filesystems*** the lofs-volume source filesystem creatition followed by the rules:    
@@ -141,6 +141,11 @@ show usage
     - `[-f <payload_file>]` base payload file
     - `[-k]` skip payload file property replace, only used with `-f`
     - `[-n]` skip create docker container, only genarate payload file
+    - `[--ports|-p <ports>]` export port, formart as `-p 80` or -p `"80 443"`
+        - can set many times
+        - managed by fwadm rule.
+        - if setted, only the special ports can be accessed outside the docker container, and the zones `firewall_enabled` is set true.
+        - default all ports can be accessed outside the docker container.
     - `[--uuid <container_uuid>]` special the docker container's uuid, if not set, a randon uuid will be set.
         - zone's `uuid`
     - `[--name <name>]` special the docker container's name, if not set, default is `-`.
@@ -240,23 +245,34 @@ pull docker image
             - if `<tag>` not provided, the default tag is `latest`
 
 ### docker images
-- docker images    
+- `docker images [--all|-a]`   
 list downloaded images on the host.
 
     - `[--all|-a]` show all layers
 
 ### docker rmi
-- docker rmi `<image_uuid>`   
+- `docker rmi <image_uuid>`   
 remove/delete a docker image
 
     - `<image_uuid>` the uuid of the docker image than want to be deleted
 
 ### docker ps
-- smartos-docker ps  
+- `smartos-docker ps [--all|-a]` 
 list running docker containers on the host.
 
     - `[--all|-a]` list all docker containers on the host. even not in running state.
 
+### docker port
+- `port [-a <ports>] [-d <ports>] <container>`  
+add/remove container ports for access from outside.  
+if the container not enabled firewall, the cmd has no effect
+
+    - `-a <ports>` add ports for access from outside.
+        - format as -a 80 or -a "80 443 ..."
+        - can set many times
+    - `-d <ports>` remove ports for access from outside.
+        - format as -d 80 or -d "80 443 ..."
+        - can set many times
 
 ### docker help
 - `docker help <sub_command>`  
@@ -302,7 +318,7 @@ docker run -k -f payload.json
 [root@smartos02 ~]# docker -h
 Usage
     docker --help|-h
-    docker run [-n] [-f <payload_file> [-k]] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]
+    docker run [-n] [[-k] -f <payload_file>] [--ports|-p <ports>] [--uuid <container_uuid>] [--name <name>] [--hostname <hostname>] [--memory|-m <memory>] [--cpu_cap <cpu_cap>] [--cpu_shares <cpu_shares>] [--io <io_priority>] [--quota <quota>] [--network <network_name>] [--ip <ip>] [--nic_tag <nic_tag>] [--gateway <gateway>] [--vlan <vlan_id>] [--resolver <resolver>] [--lofs_volume|-v <lofs_volume>] [--kernel_version <kernel_version>] [--workdir <workdir>] [--env|-e <env>] [--entrypoint <entrypoint>] [--cmd <cmd>] [--image_uuid <image_uuid> | <docker_image>]
     docker logs [-f] <container>
     docker pull [-q] <docker_image>
     docker ps [--all|-a]
