@@ -546,6 +546,6 @@ Successfully deleted VM d89700e0-0895-11ec-a012-2f97c366acc7
 ## TODO:
 1. add nfs volume
 1. auto check lofs_volume owner.
-1. fwadm integrate
+~~1. fwadm integrate~~
 1. innernet ip
 
