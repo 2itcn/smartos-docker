@@ -183,7 +183,9 @@ function usage_port(){
     echo "      <container> docker container name or uuid"
     echo "    options:"
     echo "      -a <ports> add ports for access from outside."
+    echo "          - format as -a 80 or -a \"80 443\""
     echo "      -d <ports> remove ports for access from outside."
+    echo "          - format as -d 80 or -d \"80 443\""
 }
 
 function usage(){
@@ -608,6 +610,8 @@ function do_rm(){
     fi
 
     vmadm delete ${zone}
+    echo "delete firewall rule..."
+    ensure_fwrule_removed ${zone}
 }
 
 function do_rmi(){
@@ -700,6 +704,18 @@ EOF
     fi
 }
 
+function ensure_fwrule_removed(){
+    local vm_uuid=$1
+    local pattern="FROM any TO vm ${vm_uuid} ALLOW"
+    local rules=$(fwadm list -j |json -c "this.rule.indexOf('${pattern}')==0" -a uuid)
+    if [ "${rules}" != "" ]; then
+        for rule_uuid in ${rules}
+        do
+            fwadm delete ${rule_uuid} 1>/dev/null
+        done
+    fi
+}
+
 function do_remove_ports(){
     local vm_uuid=$(get_docker_uuid $1)
     local fw_status=$(fwadm status ${vm_uuid})
@@ -752,10 +768,13 @@ function ensure_ports(){
         #fwadm start ${vm_uuid}
         local fw_status=$(fwadm status ${vm_uuid})
         [[ "${fw_status}" == "running" ]] || return
-
+        local pattern=""
+        local rules=""
         for port in ${ports}
         do
-            fwadm add -g -e FROM any TO vm ${vm_uuid} ALLOW tcp PORT ${port} 1>/dev/null
+            pattern="FROM any TO vm ${vm_uuid} ALLOW tcp PORT ${port}"
+            rules=$(fwadm rules -j ${vm_uuid} |json -c "this.rule=='${pattern}'" -a uuid)
+            [[ "${rules}" != "" ]] || fwadm add -g -e ${pattern} 1>/dev/null
         done
     fi
 }
