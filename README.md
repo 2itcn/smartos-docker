@@ -118,6 +118,9 @@ show docker images
 - `docker rmi <image_uuid>`   
 remove docker image
 
+- `docker version`   
+show smartos-docker verison
+
 - `docker help <sub_command>`   
 show docker sub command usage
 
@@ -257,7 +260,7 @@ remove/delete a docker image
     - `<image_uuid>` the uuid of the docker image than want to be deleted
 
 ### docker ps
-- `smartos-docker ps [--all|-a]` 
+- `docker ps [--all|-a]` 
 list running docker containers on the host.
 
     - `[--all|-a]` list all docker containers on the host. even not in running state.
@@ -273,6 +276,10 @@ if the container not enabled firewall, the cmd has no effect
     - `-d <ports>` remove ports for access from outside.
         - format as -d 80 or -d "80 443 ..."
         - can set many times
+
+### docker version
+- `docker version` 
+show smartos-docker version.
 
 ### docker help
 - `docker help <sub_command>`  
@@ -394,8 +401,8 @@ payload file saved at f115014a-7486-11ed-aa33-54bf6464aaf5.json
     "docker:entrypoint": "[\"/usr/bin/docker-entrypoint.sh\"]",
     "docker:cmd": "[\"minio\",\"server\",\"/data\",\"--console-address\",\":9001\"]",
     "docker:env": "[\"PATH=/opt/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"container=oci\",\"MINIO_ACCESS_KEY_FILE=access_key\",\"MINIO_SECRET_KEY_FILE=secret_key\",\"MINIO_ROOT_USER_FILE=access_key\",\"MINIO_ROOT_PASSWORD_FILE=secret_key\",\"MINIO_KMS_SECRET_KEY_FILE=kms_master_key\",\"MINIO_UPDATE_MINISIGN_PUBKEY=RWTx5Zr1tiHQLwG9keckT0c45M3AGeHD6IvimQHpyRywVWGbP1aVSGav\",\"MINIO_CONFIG_ENV_FILE=config.env\"]",
-    "docker:open_stdin": "true",
-    "docker:tty": "true",
+    "docker:open_stdin": true,
+    "docker:tty": true,
     "itime:network": "default"
   },
   "internal_metadata_namespaces": [
@@ -490,8 +497,8 @@ payload file saved at d89700e0-0895-11ec-a012-2f97c366acc7.json
     "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"REDIS_VERSION=6.2.5\",\"REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-6.2.5.tar.gz\",\"REDIS_DOWNLOAD_SHA=4b9a75709a1b74b3785e20a6c158cab94cf52298aa381eea947a678a60d551ae\"]",
     "docker:workingdir": "\"/data\"",
     "docker:workdir": "\"/data\"",
-    "docker:open_stdin": "true",
-    "docker:tty": "true",
+    "docker:open_stdin": true,
+    "docker:tty": true,
     "itime:network": "default"
   }
 }
