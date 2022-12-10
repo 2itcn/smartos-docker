@@ -509,7 +509,7 @@ function prepare_metadata(){
         internal_metadata="${internal_metadata}${prefix}'docker:workingdir':'${workdir}','docker:workdir':'${workdir}'"
         prefix=','
     fi
-    internal_metadata="${internal_metadata}${prefix}'docker:open_stdin': 'true', 'docker:tty': 'true'"
+    internal_metadata="${internal_metadata}${prefix}'docker:open_stdin': true, 'docker:tty': true"
 
     if [ "${lofs_attr}" != "" ];then
         lofs_attr="[${lofs_attr}]"
