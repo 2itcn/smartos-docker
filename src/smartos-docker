@@ -2,12 +2,14 @@
 set -o errexit
 set -o pipefail
 
+VERSION=0.1.0
+
 smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
 # minimal-64-lts@20.4.0
 temp_image_uuid=800db35c-5408-11eb-9792-872f658e7911
 internal_namespace=itime
 
-support_cmds="run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|help"
+support_cmds="run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help"
 
 
 function usage_logs(){
@@ -145,6 +147,11 @@ function usage_start(){
     echo "      <container> docker container name or uuid"
 }
 
+function usage_version(){
+    echo "  $(basename $0) version"
+    echo "    show smart-docker tool's version."
+}
+
 function usage_stop(){
     echo "  $(basename $0) stop [-f|-t <timeout>] <container>"
     echo "    stop docker container, ensure docker container status on stopped."
@@ -202,6 +209,7 @@ function usage(){
     echo "  $(basename $0) restart [-f] <container>"
     echo "  $(basename $0) rm [-f] <container>"
     echo "  $(basename $0) port [-a <ports>] [-d <ports>] <container>"
+    echo "  $(basename $0) version"
     echo "  $(basename $0) help <sub_command>"
     exit $1
 }
@@ -586,6 +594,10 @@ function do_start(){
     vmadm start ${zone}
 }
 
+function do_version(){
+    echo "smartos-docker version is ${VERSION}"
+}
+
 function do_stop(){
     local zone=$(get_docker_uuid $1)
     local options=""
@@ -622,7 +634,7 @@ function do_rmi(){
 function do_help(){
     local cmd=$1
     case ${cmd} in
-        run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|help )
+        run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help )
             echo "Usage"
             usage_${cmd}
             exit
@@ -718,12 +730,7 @@ function ensure_fwrule_removed(){
 
 function do_remove_ports(){
     local vm_uuid=$(get_docker_uuid $1)
-    local fw_status=$(fwadm status ${vm_uuid})
-    if [ "${fw_status}" != "running" ]; then
-        echo "docker container not run firewall, exit..."
-        return
-    fi
-
+    
     shift
     local ports="$@"
     if [ "${ports}" != "" ]; then
@@ -744,15 +751,12 @@ function do_remove_ports(){
 
 function do_add_ports(){
     local vm_uuid=$(get_docker_uuid $1)
-    local fw_status=$(fwadm status ${vm_uuid})
-    if [ "${fw_status}" != "running" ]; then
-        echo "docker container not run firewall, exit..."
-        return
-    fi
+    
 
     shift
     local ports="$@"
     if [ "${ports}" != "" ]; then
+
         echo "add ports ${ports}..."
         ensure_ports ${vm_uuid} "${ports}"
     fi 
@@ -761,13 +765,9 @@ function do_add_ports(){
 function ensure_ports(){
     local vm_uuid=$1
     local ports="$2"
-    if [ "${ports}" == "" ]; then
-        #fwadm stop ${vm_uuid}
-        echo "No ports provided"
-    else
-        #fwadm start ${vm_uuid}
-        local fw_status=$(fwadm status ${vm_uuid})
-        [[ "${fw_status}" == "running" ]] || return
+    local firewall_enabled=$(vmadm get ${vm_uuid}|json firewall_enabled)    
+    if [ "${ports}" != "" ]; then       
+        [[ "${firewall_enabled}" == "true" ]] || fwadm start ${vm_uuid}
         local pattern=""
         local rules=""
         for port in ${ports}
@@ -862,7 +862,7 @@ lofs_attr=""
 CMD=""
 
 case $1 in
-    run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|help )
+    run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help )
         CMD=$1
         shift 1
         ;;
@@ -1002,7 +1002,7 @@ if [ "$CMD" == "run" ]; then
                     echo ""
                     echo "not supported arg: $1"
                     echo ""
-                    usage
+                    usage_${CMD}
                 fi
                 ;;
         esac
@@ -1028,17 +1028,17 @@ if [ "$CMD" == "run" ]; then
 fi
 
 if [ "$CMD" == "pull" ]; then
-    [[ $# -lt 3 ]] || usage
+    [[ $# -lt 3 ]] || usage_${CMD}
     if [ "$1" == "-q" ]; then
         pull_quiet="true"
         shift
     fi
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     do_pull $1
 fi
 
 if [ "$CMD" == "ps" ]; then
-    [[ $# -lt 2 ]] || usage
+    [[ $# -lt 2 ]] || usage_${CMD}
     do_ps $1
 fi
 
@@ -1058,48 +1058,54 @@ fi
 
 # smartos-docker logs [-f] <docker>
 if [ "$CMD" == "logs" ]; then
-    [[ $# -lt 3 ]] || usage
+    [[ $# -lt 3 ]] || usage_${CMD}
     if [ "$1" == "-f" ]; then
         log_follow="true"
         shift
     fi
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     do_logs $1
 fi
 
 if [ "$CMD" == "help" ]; then
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     do_help $1
 fi
 
 if [ "$CMD" == "start" ]; then
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
 
     do_start $1
 fi
 
 if [ "$CMD" == "restart" ]; then
-    [[ $# -lt 3 ]] || usage
+    [[ $# -lt 3 ]] || usage_${CMD}
     if [ "$1" == "-f" ]; then
         restart_force="true"
         shift
     fi
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     do_restart $1
 fi
 
 if [ "$CMD" == "rm" ]; then
-    [[ $# -lt 3 ]] || usage
+    [[ $# -lt 3 ]] || usage_${CMD}
     if [ "$1" == "-f" ]; then
         rm_force="true"
         shift
     fi
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     do_rm $1
 fi
 
+if [ "$CMD" == "version" ]; then
+    [[ $# -eq 0 ]] || usage_${CMD}
+
+    do_version
+fi
+
 if [ "$CMD" == "rmi" ]; then
-    [[ $# -eq 1 ]] || usage
+    [[ $# -eq 1 ]] || usage_${CMD}
     [[ "$(is_uuid $1)" == "1" ]] || fatal "$1 not a valid uuid"
     do_rmi $1
 fi
@@ -1123,7 +1129,7 @@ if [ "$CMD" == "port" ]; then
                 if [ $# -ne 1 ]; then
                     echo "only <container> arg accepted"
                     echo ""
-                    usage_port
+                    usage_${CMD}
                     exit
                 fi
                 shift
@@ -1134,16 +1140,21 @@ if [ "$CMD" == "port" ]; then
     if [ "${vm_uuid}" == "" ]; then
         echo "<container> not exist or is invalid"
         echo ""
-        usage_port
+        usage_${CMD}
         exit
     fi
 
     do_add_ports ${vm_uuid} "${add_ports[@]}"
     do_remove_ports ${vm_uuid} "${remove_ports[@]}"
 
-    #fw_ports=($(fwadm rules -j ${vm_uuid} |json -c "this.rule.indexOf('FROM any TO vm ${vm_uuid} ALLOW')==0" -a rule | awk -F' ' '{print $NF}'))
-    # error
-    #vmadm update ${vm_uuid} internal_metadata.${internal_namespace}:ports="${fw_ports[@]}"    
+    fw_ports=($(fwadm rules -j ${vm_uuid} |json -c "this.rule.indexOf('FROM any TO vm ${vm_uuid} ALLOW')==0" -a rule | awk -F' ' '{print $NF}'))
+    firewall_enabled=$(vmadm get ${vm_uuid}|json firewall_enabled)
+    if [ "${fw_ports}" == "" ]; then        
+        [[ "${firewall_enabled}" != "true" ]] || fwadm stop ${vm_uuid}
+        echo "{\"remove_internal_metadata\":[\"${internal_namespace}:ports\"]}" |vmadm update ${vm_uuid}
+    else
+        vmadm update ${vm_uuid} internal_metadata.${internal_namespace}:ports="${fw_ports[@]}"
+    fi
 fi
 
 if [ "$CMD" == "stop" ]; then
@@ -1162,7 +1173,7 @@ if [ "$CMD" == "stop" ]; then
                     echo ""
                     echo "not supported arg: $1"
                     echo ""
-                    usage
+                    usage_${CMD}
                 fi
                 do_stop $1
                 shift
