@@ -88,8 +88,8 @@ docker pull jumpserver/jms_all:v2.13.2
       "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"Version=v2.13.2\",\"LANG=en_US.utf8\",\"SECRET_KEY=XOkr5EqqWPftUP3Xiq4mlOspjr1XVwU5kTxTT7dNVWu2xAu6mf\",\"BOOTSTRAP_TOKEN=5LTjAK14r3DVd7f0\",\"DB_ENGINE=mysql\",\"DB_HOST=mysql.itime.biz\",\"DB_PORT=3306\",\"DB_USER=jumpserver\",\"DB_PASSWORD=weakPassword\",\"DB_NAME=jumpserver\",\"REDIS_HOST=redis01.itime.biz\",\"REDIS_PORT=6379\",\"REDIS_PASSWORD=P@ssw0rd\",\"CORE_HOST=http://127.0.0.1:8080\",\"LOG_LEVEL=ERROR\"]",
       "docker:workingdir": "\"/opt\"",
       "docker:workdir": "\"/opt\"",
-      "docker:open_stdin": "true",
-      "docker:tty": "true",
+      "docker:open_stdin": true,
+      "docker:tty": true,
       "itime:network": "default"
     }
   }

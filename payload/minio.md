@@ -55,8 +55,8 @@ docker pull minio/minio:RELEASE.2021-07-22T05-23-32Z
         "docker:entrypoint": "[\"/usr/bin/docker-entrypoint.sh\"]",
         "docker:cmd": "[\"minio\",\"server\",\"/data\",\"--console-address\",\":9001\"]",
         "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"container=oci\",\"MINIO_ACCESS_KEY_FILE=access_key\",\"MINIO_SECRET_KEY_FILE=secret_key\",\"MINIO_ROOT_USER_FILE=access_key\",\"MINIO_ROOT_PASSWORD_FILE=secret_key\",\"MINIO_KMS_SECRET_KEY_FILE=kms_master_key\",\"MINIO_UPDATE_MINISIGN_PUBKEY=RWTx5Zr1tiHQLwG9keckT0c45M3AGeHD6IvimQHpyRywVWGbP1aVSGav\",\"MINIO_CONFIG_ENV_FILE=config.env\",\"MINIO_ROOT_USER=YOURROOTUSER\",\"MINIO_ROOT_PASSWORD=YOUROOTPASSWORD\"]",
-        "docker:open_stdin": "true",
-        "docker:tty": "true",
+        "docker:open_stdin": true,
+        "docker:tty": true,
         "itime:network": "default"
       },
       "internal_metadata_namespaces": [

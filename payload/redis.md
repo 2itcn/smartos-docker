@@ -60,8 +60,8 @@ docker pull redis:6.2.5-alpine
         "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"REDIS_VERSION=6.2.5\",\"REDIS_DOWNLOAD_URL=http://download.redis.io/releases/redis-6.2.5.tar.gz\",\"REDIS_DOWNLOAD_SHA=4b9a75709a1b74b3785e20a6c158cab94cf52298aa381eea947a678a60d551ae\"]",
         "docker:workingdir": "\"/data\"",
         "docker:workdir": "\"/data\"",
-        "docker:open_stdin": "true",
-        "docker:tty": "true",
+        "docker:open_stdin": true,
+        "docker:tty": true,
         "itime:network": "default"
       },
       "internal_metadata_namespaces": [

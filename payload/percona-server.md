@@ -67,8 +67,8 @@ docker pull percona/percona-server:8.0.25
         "docker:entrypoint": "[\"/docker-entrypoint.sh\"]",
         "docker:cmd": "[\"mysqld\",\"--user=mysql\",\"--character-set-server=utf8mb4\",\"--collation-server=utf8mb4_general_ci\"]",
         "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"PS_VERSION=8.0.25-15.1\",\"OS_VER=el8\",\"FULL_PERCONA_VERSION=8.0.25-15.1.el8\",\"MYSQL_ROOT_PASSWORD=P@ssw0rd\"]",
-        "docker:open_stdin": "true",
-        "docker:tty": "true",
+        "docker:open_stdin": true,
+        "docker:tty": true,
         "itime:lofs_attr": "[{ \"owner\": \"1001:1001\", \"target\": \"/var/lib/mysql\", \"source\": \"/export/lofs/docker-mysql01/volumes/data\" }, { \"isfile\": true, \"owner\": \"1001\", \"target\": \"/etc/my.cnf\", \"source\": \"/export/lofs/docker-mysql01/volumes/my.cnf\" }]",
         "itime:network": "default"
       }

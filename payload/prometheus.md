@@ -66,8 +66,8 @@ docker pull prom/prometheus:v2.28.1
         "docker:env": "[\"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"]",
         "docker:workingdir": "\"/prometheus\"",
         "docker:workdir": "\"/prometheus\"",
-        "docker:open_stdin": "true",
-        "docker:tty": "true",
+        "docker:open_stdin": true,
+        "docker:tty": true,
         "itime:lofs_attr": "[{ \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/data\", \"target\": \"/prometheus\" }, { \"isfile\": true, \"owner\": \"nobody4:nogroup\", \"source\": \"/export/lofs/docker-prometheus01/volumes/prometheus.yml\", \"target\": \"/etc/prometheus/prometheus.yml\" }]",
         "itime:network": "default"
       }

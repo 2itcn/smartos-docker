@@ -69,8 +69,8 @@ docker pull gitlab/gitlab-ce:14.1.0-ce.0
       "internal_metadata": {
         "docker:cmd": "[\"/assets/wrapper\"]",
         "docker:env": "[\"PATH=/opt/gitlab/embedded/bin:/opt/gitlab/bin:/assets:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"LANG=C.UTF-8\",\"EDITOR=/bin/vi\",\"TERM=xterm\",\"GITLAB_ROOT_PASSWORD=P@ssw0rd\"]",
-        "docker:open_stdin": "true",
-        "docker:tty": "true",
+        "docker:open_stdin": true,
+        "docker:tty": true,
         "itime:network": "default"
       },
       "internal_metadata_namespaces": [
