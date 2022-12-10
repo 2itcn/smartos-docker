@@ -1,4 +1,4 @@
-mkdir -p /opt/tools/etc/smartos-docker.conf
+mkdir -p /opt/tools/etc/
 [[ -f /opt/tools/etc/smartos-docker.conf ]] || cp src/smartos-docker.conf /opt/tools/etc/smartos-docker.conf
 cp src/smartos-docker /opt/tools/bin/smartos-docker
 chmod +x /opt/tools/bin/smartos-docker
