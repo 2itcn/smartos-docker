@@ -277,7 +277,7 @@ if the container not enabled firewall, the cmd has no effect
         - format as -d 80 or -d "80 443 ..."
         - can set many times
 
-### docker version
+### docker version 
 - `docker version` 
 show smartos-docker version.
 
