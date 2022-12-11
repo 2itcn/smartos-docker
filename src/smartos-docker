@@ -2,7 +2,7 @@
 set -o errexit
 set -o pipefail
 
-VERSION=0.1.0
+VERSION=dev
 
 smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
 # minimal-64-lts@20.4.0
