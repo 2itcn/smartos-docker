@@ -118,6 +118,9 @@ show docker images
 - `docker rmi <image_uuid>`   
 remove docker image
 
+- `dockerport [-a <ports>] [-d <ports>] <container>`
+add/remove container ports for access from outside.
+
 - `docker version`   
 show smartos-docker verison
 
@@ -266,9 +269,8 @@ list running docker containers on the host.
     - `[--all|-a]` list all docker containers on the host. even not in running state.
 
 ### docker port
-- `port [-a <ports>] [-d <ports>] <container>`  
+- `docker port [-a <ports>] [-d <ports>] <container>`  
 add/remove container ports for access from outside.  
-if the container not enabled firewall, the cmd has no effect
 
     - `-a <ports>` add ports for access from outside.
         - format as -a 80 or -a "80 443 ..."
@@ -276,6 +278,13 @@ if the container not enabled firewall, the cmd has no effect
     - `-d <ports>` remove ports for access from outside.
         - format as -d 80 or -d "80 443 ..."
         - can set many times
+### docker exec
+- `docker exec [-i] <container> <cmd>`  
+exec cmd in docker container.
+
+    - `-i` forces interactive mode.
+    - `<container>` docker container name or uuid.
+    - `<cmd>` the command exected in docker container.
 
 ### docker version 
 - `docker version` 
@@ -335,6 +344,9 @@ Usage
     docker stop [-f|-t <timeout>] <container>
     docker restart [-f] <container>
     docker rm [-f] <container>
+    docker port [-a <ports>] [-d <ports>] <container>
+    docker version
+    docker exec [-i] <container> <cmd>
     docker help <sub_command>
 ```
 

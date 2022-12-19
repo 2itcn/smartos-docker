@@ -9,7 +9,7 @@ smartos_docker_conf_file=/opt/tools/etc/smartos-docker.conf
 temp_image_uuid=800db35c-5408-11eb-9792-872f658e7911
 internal_namespace=itime
 
-support_cmds="run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help"
+support_cmds="run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|exec|help"
 
 
 function usage_logs(){
@@ -152,6 +152,16 @@ function usage_version(){
     echo "    show smart-docker tool's version."
 }
 
+function usage_exec(){
+    echo "  $(basename $0) exec [-i] <container> <cmd>"
+    echo "    exec cmd in docker container."
+    echo "    args:"
+    echo "      <container> docker container name or uuid"
+    echo "      <cmd> the command exected in docker container"
+    echo "    options:"
+    echo "      -i forces interactive mode"
+}
+
 function usage_stop(){
     echo "  $(basename $0) stop [-f|-t <timeout>] <container>"
     echo "    stop docker container, ensure docker container status on stopped."
@@ -185,7 +195,6 @@ function usage_rm(){
 function usage_port(){
     echo "  $(basename $0) port [-a <ports>] [-d <ports>] <container>"
     echo "    add/remove container ports for access from outside."
-    echo "    if the container not enabled firewall, the cmd has no effect"
     echo "    args:"
     echo "      <container> docker container name or uuid"
     echo "    options:"
@@ -210,6 +219,7 @@ function usage(){
     echo "  $(basename $0) rm [-f] <container>"
     echo "  $(basename $0) port [-a <ports>] [-d <ports>] <container>"
     echo "  $(basename $0) version"
+    echo "  $(basename $0) exec [-i] <container> <cmd>"
     echo "  $(basename $0) help <sub_command>"
     exit $1
 }
@@ -598,6 +608,24 @@ function do_version(){
     echo "smartos-docker version is ${VERSION}"
 }
 
+function do_exec(){
+    local flag_i=""
+    if [ "$1" == "-i" ]; then
+        flag_i="-i"
+        shift
+    fi
+    local zone=$(get_docker_uuid $1)
+    shift 
+    
+    local cmd=$@
+    if [ "$cmd" == "" ]; then
+        echo "there has no cmd with exec sub command."
+        usage_exec
+    fi
+
+    zlogin ${flag_i} ${zone} /native/usr/vm/sbin/dockerexec ${cmd}
+}
+
 function do_stop(){
     local zone=$(get_docker_uuid $1)
     local options=""
@@ -605,6 +633,8 @@ function do_stop(){
     [[ "${stop_timeout}" ==  "" ]] || options="${options} -t ${stop_timeout}"
     vmadm stop ${zone} ${options}
 }
+
+
 
 function do_restart(){
     local zone=$(get_docker_uuid $1)
@@ -634,7 +664,7 @@ function do_rmi(){
 function do_help(){
     local cmd=$1
     case ${cmd} in
-        run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help )
+        run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|exec|help )
             echo "Usage"
             usage_${cmd}
             exit
@@ -862,7 +892,7 @@ lofs_attr=""
 CMD=""
 
 case $1 in
-    run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|help )
+    run|pull|ps|logs|images|start|stop|restart|rm|rmi|port|version|exec|help )
         CMD=$1
         shift 1
         ;;
@@ -1102,6 +1132,10 @@ if [ "$CMD" == "version" ]; then
     [[ $# -eq 0 ]] || usage_${CMD}
 
     do_version
+fi
+
+if [ "$CMD" == "exec" ]; then
+    do_exec $@
 fi
 
 if [ "$CMD" == "rmi" ]; then
