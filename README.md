@@ -1,4 +1,4 @@
-# smartos-docker
+# smartos-docker (0.1.2)
 smartos-docker is a tool help manage docker on SmartOS GZ 
 - create a payload file for create docker container on SmartOS GZ
 - create docker container from a payload file
