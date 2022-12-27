@@ -1,9 +1,9 @@
 # minio
 ## docker image
-minio/minio:RELEASE.2021-07-22T05-23-32Z
+minio/minio:RELEASE.2022-05-26T05-48-41Z
 
 ```
-docker pull minio/minio:RELEASE.2021-07-22T05-23-32Z
+docker pull minio/minio:RELEASE.2022-05-26T05-48-41Z
 ```
 
 ## step
@@ -16,14 +16,14 @@ docker pull minio/minio:RELEASE.2021-07-22T05-23-32Z
   -v "data:/data" \
   -e "MINIO_ROOT_USER=YOURROOTUSER MINIO_ROOT_PASSWORD=YOUROOTPASSWORD" \
   --cmd 'minio server /data --console-address :9001' \
-  minio/minio:RELEASE.2021-07-22T05-23-32Z
+  minio/minio:RELEASE.2022-05-26T05-48-41Z
   ```
   - payload file
     ```
     {
       "uuid": "30971f84-7490-11ed-907e-54bf6464aaf5",
       "max_physical_memory": 512,
-      "image_uuid": "d0397ac6-28ff-a37e-73a2-8e02d9d90d15",
+      "image_uuid": "57ea83a7-cf5a-3e3c-6acb-efe2156efd88",
       "resolvers": [
         "192.168.81.253",
         "8.8.8.8"
@@ -75,3 +75,8 @@ docker pull minio/minio:RELEASE.2021-07-22T05-23-32Z
 
 ## Visit:
 http://192.168.59.163:9001
+
+## Note
+1. Starting with RELEASE.2022-06-02T02-11-04Z, MinIO implements a zero-parity erasure coded backend for single-node single-drive deployments. This feature allows access to erasure coding dependent features without the requirement of multiple drives.
+1. RELEASE.2022-10-29T06-21-33Z fully removes the deprecated Gateway/Filesystem backends. MinIO returns an error if it starts up and detects existing Filesystem backend files.
+1. RELEASE.2022-05-26T05-48-41Z is latest version that support non-erasure coded backend for SNSD.
